@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Guessing Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
+
+    .nav-bar {
+      display: flex; gap: 8px; padding: 12px 20px; background: #1a1a2e; border-bottom: 1px solid #333;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-btn {
+      padding: 10px 18px; border: none; border-radius: 8px; background: #252540; color: #aaa;
+      cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
+    }
+    .nav-btn:hover { background: #353560; color: #fff; }
+    .nav-btn.active { background: #e94560; color: #fff; }
+
+    .view { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .view.active { display: block; }
+
+    .card {
+      background: #1a1a2e; border-radius: 16px; padding: 24px; border: 1px solid #2a2a4a;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    h2 { color: #e94560; margin-bottom: 20px; font-size: 24px; }
+    h3 { color: #ffd700; margin-bottom: 16px; font-size: 18px; }
+    h4 { color: #aaa; margin: 12px 0 8px; font-size: 14px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a3a5a;
+      background: #252540; color: #fff; font-size: 15px;
+    }
+    .form-group small { display: block; margin-top: 6px; color: #888; font-size: 12px; }
+
+    .btn-primary, .btn-secondary, .btn-danger, .btn-tiny {
+      padding: 12px 24px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover { background: #ff6b81; transform: translateY(-1px); }
+    .btn-secondary { background: #4a4a6a; color: #fff; }
+    .btn-secondary:hover { background: #5a5a7a; }
+    .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-danger { background: #ff4757; color: #fff; }
+    .btn-danger:hover { background: #ff6b81; }
+    .btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+    .btn-correct { background: #2ed573; color: #0f2f1a; }
+    .btn-wrong { background: #ff4757; color: #fff; }
+
+    .host-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .host-layout { grid-template-columns: 1fr; } }
+
+    .round-info { display: flex; gap: 12px; margin-bottom: 16px; }
+    .round-badge, .points-badge {
+      padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 14px;
+    }
+    .round-badge { background: #ffd700; color: #1a1a2e; }
+    .points-badge { background: #2ed573; color: #0f2f1a; }
+
+    .spotify-box { margin: 16px 0; }
+    .placeholder-text { color: #666; text-align: center; padding: 40px; }
+    .hint { color: #888; font-size: 13px; text-align: center; margin-top: 8px; }
+
+    .host-controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+    .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
+    .answer-box.hidden { display: none; }
+    .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
+
+    .guesses-review { margin: 16px 0; }
+    .guess-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px; background: #1a1a2e;
+      border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .guess-round { color: #888; font-size: 12px; }
+
+    #qr-code { display: flex; justify-content: center; margin: 16px 0; }
+    #qr-code img, #qr-code canvas { border-radius: 12px; }
+    .join-url { text-align: center; color: #888; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
+
+    .teams-status ul { list-style: none; }
+    .teams-status li { padding: 6px 0; border-bottom: 1px solid #2a2a4a; color: #ccc; }
+
+    .mini-scoreboard { margin-top: 16px; }
+    .score-row {
+      display: flex; align-items: center; gap: 12px; padding: 10px; background: #252540;
+      border-radius: 8px; margin-bottom: 6px;
+    }
+    .score-row.big { padding: 14px; font-size: 18px; }
+    .score-row .rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: #e94560; color: #fff; border-radius: 50%; font-weight: 700; font-size: 13px; }
+    .score-row.big .rank { width: 36px; height: 36px; font-size: 16px; }
+    .score-row .team { flex: 1; color: #fff; }
+    .score-row .score { font-weight: 700; color: #ffd700; }
+
+    /* Player View */
+    .player-container { max-width: 480px; margin: 0 auto; }
+    .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .team-label { background: #e94560; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 600; }
+    .my-score { font-size: 20px; font-weight: 800; color: #ffd700; }
+
+    .song-indicator { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+    .song-dot {
+      width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      background: #252540; color: #888; font-weight: 700; border: 2px solid #3a3a5a; transition: all 0.3s;
+    }
+    .song-dot.active { background: #e94560; color: #fff; border-color: #ff6b81; transform: scale(1.1); box-shadow: 0 0 16px rgba(233,69,96,0.4); }
+    .song-dot.played { background: #2ed573; color: #0f2f1a; border-color: #2ed573; }
+
+    .points-display { text-align: center; color: #ccc; margin-bottom: 20px; font-size: 16px; }
+    .points-display strong { color: #ffd700; font-size: 24px; }
+
+    .guess-section label { display: block; margin-bottom: 8px; color: #ccc; }
+    .guess-section input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #3a3a5a; background: #252540; color: #fff; font-size: 16px; margin-bottom: 12px; }
+    .btn-guess { width: 100%; padding: 16px; font-size: 18px; }
+
+    .guess-status { padding: 20px; background: #252540; border-radius: 12px; text-align: center; }
+    .guess-status.hidden { display: none; }
+    .status-message { font-size: 18px; font-weight: 600; color: #ffd700; }
+
+    .waiting-message { text-align: center; color: #888; padding: 20px; }
+    .waiting-message.hidden { display: none; }
+
+    .scoreboard-card { max-width: 700px; margin: 0 auto; }
+    .history-item { padding: 10px; background: #252540; border-radius: 8px; margin-bottom: 8px; color: #ccc; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- NAVIGATION -->
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="switchView('setup')">⚙️ Setup</button>
+    <button class="nav-btn active" onclick="switchView('host')">🎤 Host Screen</button>
+    <button class="nav-btn" onclick="switchView('player')">📱 Team Phone</button>
+    <button class="nav-btn" onclick="switchView('scores')">🏆 Scoreboard</button>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <div id="view-setup" class="view">
+    <div class="card">
+      <h2>🎵 Game Setup</h2>
+      <div class="form-group">
+        <label>Spotify Playlist URL</label>
+        <input type="text" id="playlist-url" placeholder="https://open.spotify.com/playlist/..." value="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M">
+        <small>Paste a public Spotify playlist link. The game will use the first 5 songs.</small>
+      </div>
+      <div class="form-group">
+        <label>Correct Answer (Person)</label>
+        <input type="text" id="correct-answer" placeholder="e.g. Freddie Mercury">
+        <small>The person all 5 songs are clues about.</small>
+      </div>
+      <div class="form-group">
+        <label>Team Names (one per line)</label>
+        <textarea id="team-names" rows="4" placeholder="Team A&#10;Team B&#10;Team C">The Rockstars&#10;The Melodies&#10;The Vinyls</textarea>
+      </div>
+      <button class="btn-primary" onclick="saveSetup()">💾 Save & Start Game</button>
+    </div>
+  </div>
+
+  <!-- HOST VIEW -->
+  <div id="view-host" class="view active">
+    <div class="host-layout">
+      <!-- Left: Game Control -->
+      <div class="host-left">
+        <div class="card">
+          <h2>🎤 Host Control</h2>
+          <div class="round-info">
+            <div class="round-badge">Round <span id="current-round">1</span> / 5</div>
+            <div class="points-badge" id="current-points">5 points available</div>
+          </div>
+          
+          <div class="spotify-box">
+            <div id="spotify-embed-container">
+              <p class="placeholder-text">Spotify player will appear here after setup</p>
+            </div>
+            <p class="hint">💡 Click the play button in the Spotify player to start the song</p>
+          </div>
+
+          <div class="host-controls">
+            <button class="btn-secondary" onclick="prevSong()" id="btn-prev">⏮️ Previous Song</button>
+            <button class="btn-primary" onclick="nextSong()" id="btn-next">Next Song ⏭️</button>
+            <button class="btn-danger" onclick="revealAnswer()">🔓 Reveal Answer</button>
+          </div>
+
+          <div id="answer-reveal" class="answer-box hidden">
+            <h3>The answer is:</h3>
+            <div class="answer-text" id="revealed-answer">???</div>
+            <div class="guesses-review">
+              <h4>Review Guesses:</h4>
+              <div id="guesses-list"></div>
+            </div>
+            <button class="btn-primary" onclick="finishRound()">✅ Finish Round & Score</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: QR & Teams -->
+      <div class="host-right">
+        <div class="card">
+          <h3>📱 Join Game</h3>
+          <div id="qr-code"></div>
+          <p class="join-url" id="join-url">Scan to join as a team</p>
+          <div class="teams-status">
+            <h4>Connected Teams:</h4>
+            <ul id="connected-teams"></ul>
+          </div>
+        </div>
+        
+        <div class="card mini-scoreboard">
+          <h3>🏆 Live Scores</h3>
+          <div id="mini-scores"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYER VIEW -->
+  <div id="view-player" class="view">
+    <div class="player-container">
+      <div class="card" id="player-login">
+        <h2>🎮 Join Game</h2>
+        <div class="form-group">
+          <label>Select Your Team</label>
+          <select id="player-team-select"></select>
+        </div>
+        <button class="btn-primary" onclick="joinGame()">Join Game</button>
+      </div>
+
+      <div class="card hidden" id="player-game">
+        <div class="player-header">
+          <span class="team-label" id="my-team">Team</span>
+          <span class="my-score" id="my-score">0 pts</span>
+        </div>
+        
+        <div class="song-indicator">
+          <div class="song-dot active" id="dot-1">1</div>
+          <div class="song-dot" id="dot-2">2</div>
+          <div class="song-dot" id="dot-3">3</div>
+          <div class="song-dot" id="dot-4">4</div>
+          <div class="song-dot" id="dot-5">5</div>
+        </div>
+        <div class="points-display">Current value: <strong id="song-value">5</strong> pts</div>
+
+        <div class="guess-section" id="guess-section">
+          <label>Who is the person?</label>
+          <input type="text" id="player-guess" placeholder="Enter your guess...">
+          <button class="btn-primary btn-guess" onclick="submitGuess()">Submit Guess</button>
+        </div>
+
+        <div class="guess-status hidden" id="guess-status">
+          <div class="status-message" id="status-msg"></div>
+        </div>
+
+        <div class="waiting-message hidden" id="waiting-msg">
+          ⏳ Waiting for host to start next song...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCOREBOARD VIEW -->
+  <div id="view-scores" class="view">
+    <div class="card scoreboard-card">
+      <h2>🏆 Full Scoreboard</h2>
+      <div id="full-scoreboard"></div>
+      <div class="round-history" id="round-history"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== GAME STATE ====================
+let gameState = {
+  playlistUrl: '',
+  correctAnswer: '',
+  teams: [],
+  scores: {},
+  currentRound: 1,
+  guesses: {},
+  roundHistory: [],
+  gameStarted: false,
+  gameId: 'game-' + Math.random().toString(36).substr(2, 9)
+};
+
+function loadState() {
+  const saved = localStorage.getItem('musicGameState');
+  if (saved) {
+    gameState = JSON.parse(saved);
+    restoreUI();
+  }
+}
+
+function saveState() {
+  localStorage.setItem('musicGameState', JSON.stringify(gameState));
+  broadcastUpdate();
+}
+
+let bc;
+try {
+  bc = new BroadcastChannel('music_game_channel');
+  bc.onmessage = (event) => {
+    if (event.data.gameId === gameState.gameId) {
+      gameState = event.data.state;
+      restoreUI();
+    }
+  };
+} catch(e) {}
+
+function broadcastUpdate() {
+  if (bc) {
+    bc.postMessage({ gameId: gameState.gameId, state: gameState });
+  }
+}
+
+// ==================== SETUP ====================
+function saveSetup() {
+  const url = document.getElementById('playlist-url').value.trim();
+  const answer = document.getElementById('correct-answer').value.trim();
+  const teamsRaw = document.getElementById('team-names').value.trim();
+  
+  if (!url || !answer || !teamsRaw) {
+    alert('Please fill in all fields');
+    return;
+  }
+  
+  gameState.playlistUrl = url;
+  gameState.correctAnswer = answer;
+  gameState.teams = teamsRaw.split('\n').map(t => t.trim()).filter(t => t);
+  gameState.scores = {};
+  gameState.teams.forEach(t => gameState.scores[t] = 0);
+  gameState.currentRound = 1;
+  gameState.guesses = {};
+  gameState.roundHistory = [];
+  gameState.gameStarted = true;
+  
+  saveState();
+  initHostView();
+  switchView('host');
+}
+
+// ==================== HOST VIEW ====================
+function initHostView() {
+  const joinUrl = window.location.href.split('#')[0] + '?game=' + gameState.gameId;
+  document.getElementById('join-url').textContent = 'Scan to join or visit: ' + joinUrl;
+  
+  const qrContainer = document.getElementById('qr-code');
+  qrContainer.innerHTML = '';
+  new QRCode(qrContainer, {
+    text: joinUrl,
+    width: 180,
+    height: 180,
+    colorDark: '#1a1a2e',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+  
+  const embedContainer = document.getElementById('spotify-embed-container');
+  let embedUrl = gameState.playlistUrl;
+  if (embedUrl.includes('open.spotify.com')) {
+    embedUrl = embedUrl.replace('open.spotify.com/', 'open.spotify.com/embed/');
+  }
+  embedContainer.innerHTML = `<iframe src="${embedUrl}" width="100%" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media; autoplay"></iframe>`;
+  
+  document.getElementById('revealed-answer').textContent = gameState.correctAnswer;
+  updateHostUI();
+}
+
+function updateHostUI() {
+  document.getElementById('current-round').textContent = gameState.currentRound;
+  const points = 6 - gameState.currentRound;
+  document.getElementById('current-points').textContent = points + ' points available';
+  
+  document.getElementById('btn-prev').disabled = gameState.currentRound <= 1;
+  document.getElementById('btn-next').disabled = gameState.currentRound >= 5;
+  
+  const teamsList = document.getElementById('connected-teams');
+  teamsList.innerHTML = gameState.teams.map(t => 
+    `<li>${t} ${gameState.guesses[t] ? '✅ guessed' : '⏳ waiting'}</li>`
+  ).join('');
+  
+  updateScoreboards();
+  updateGuessesList();
+}
+
+function nextSong() {
+  if (gameState.currentRound < 5) {
+    gameState.currentRound++;
+    saveState();
+    updateHostUI();
+  }
+}
+
+function prevSong() {
+  if (gameState.currentRound > 1) {
+    gameState.currentRound--;
+    saveState();
+    updateHostUI();
+  }
+}
+
+function revealAnswer() {
+  document.getElementById('answer-reveal').classList.remove('hidden');
+}
+
+function updateGuessesList() {
+  const container = document.getElementById('guesses-list');
+  const guesses = Object.entries(gameState.guesses);
+  if (guesses.length === 0) {
+    container.innerHTML = '<p>No guesses yet</p>';
+    return;
+  }
+  container.innerHTML = guesses.map(([team, data]) => {
+    const isCorrect = data.guess.toLowerCase().trim() === gameState.correctAnswer.toLowerCase().trim();
+    const points = isCorrect ? (6 - data.round) : 0;
+    return `
+      <div class="guess-item">
+        <strong>${team}</strong>: "${data.guess}" 
+        <span class="guess-round">(song ${data.round})</span>
+        <button class="btn-tiny ${isCorrect ? 'btn-correct' : 'btn-wrong'}" onclick="markGuess('${team}', ${isCorrect}, ${points})">
+          ${isCorrect ? '✅ Correct (' + points + ' pts)' : '❌ Wrong (0 pts)'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function markGuess(team, isCorrect, points) {
+  if (!gameState.scores[team]) gameState.scores[team] = 0;
+  if (isCorrect) {
+    gameState.scores[team] += points;
+  }
+  gameState.guesses[team] = { ...gameState.guesses[team], scored: true, points: isCorrect ? points : 0 };
+  saveState();
+  updateHostUI();
+}
+
+function finishRound() {
+  Object.entries(gameState.guesses).forEach(([team, data]) => {
+    if (!data.scored) {
+      const isCorrect = data.guess.toLowerCase().trim() === gameState.correctAnswer.toLowerCase().trim();
+      const points = isCorrect ? (6 - data.round) : 0;
+      if (isCorrect) {
+        gameState.scores[team] = (gameState.scores[team] || 0) + points;
+      }
+      gameState.guesses[team] = { ...data, scored: true, points };
+    }
+  });
+  
+  gameState.roundHistory.push({
+    round: gameState.currentRound,
+    answer: gameState.correctAnswer,
+    guesses: { ...gameState.guesses }
+  });
+  
+  gameState.guesses = {};
+  gameState.currentRound = 1;
+  
+  saveState();
+  document.getElementById('answer-reveal').classList.add('hidden');
+  updateHostUI();
+  alert('Round finished! Go to Setup to start a new round with a new playlist.');
+}
+
+// ==================== PLAYER VIEW ====================
+function initPlayerView() {
+  const select = document.getElementById('player-team-select');
+  select.innerHTML = gameState.teams.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function joinGame() {
+  const team = document.getElementById('player-team-select').value;
+  if (!team) return;
+  
+  localStorage.setItem('myTeam', team);
+  document.getElementById('player-login').classList.add('hidden');
+  document.getElementById('player-game').classList.remove('hidden');
+  document.getElementById('my-team').textContent = team;
+  updatePlayerUI();
+}
+
+function updatePlayerUI() {
+  const team = localStorage.getItem('myTeam');
+  if (!team) return;
+  
+  document.getElementById('my-score').textContent = (gameState.scores[team] || 0) + ' pts';
+  document.getElementById('song-value').textContent = 6 - gameState.currentRound;
+  
+  for (let i = 1; i <= 5; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.classList.remove('active', 'played');
+    if (i < gameState.currentRound) dot.classList.add('played');
+    if (i === gameState.currentRound) dot.classList.add('active');
+  }
+  
+  const myGuess = gameState.guesses[team];
+  if (myGuess && !myGuess.scored) {
+    document.getElementById('guess-section').classList.add('hidden');
+    document.getElementById('guess-status').classList.remove('hidden');
+    document.getElementById('status-msg').textContent = `You guessed: "${myGuess.guess}"`;
+  } else if (myGuess && myGuess.scored) {
+    document.getElementById('guess-section').classList.add('hidden');
+    document.getElementById('guess-status').classList.remove('hidden');
+    const result = myGuess.points > 0 ? `✅ Correct! +${myGuess.points} points` : '❌ Wrong! 0 points';
+    document.getElementById('status-msg').textContent = result;
+  } else {
+    document.getElementById('guess-section').classList.remove('hidden');
+    document.getElementById('guess-status').classList.add('hidden');
+  }
+}
+
+function submitGuess() {
+  const team = localStorage.getItem('myTeam');
+  const guess = document.getElementById('player-guess').value.trim();
+  if (!guess || !team) return;
+  
+  gameState.guesses[team] = {
+    guess: guess,
+    round: gameState.currentRound,
+    scored: false,
+    points: 0
+  };
+  
+  saveState();
+  document.getElementById('player-guess').value = '';
+  updatePlayerUI();
+}
+
+// ==================== SCOREBOARD ====================
+function updateScoreboards() {
+  const sorted = Object.entries(gameState.scores).sort((a, b) => b[1] - a[1]);
+  
+  document.getElementById('mini-scores').innerHTML = sorted.map(([team, score], i) => `
+    <div class="score-row">
+      <span class="rank">${i + 1}</span>
+      <span class="team">${team}</span>
+      <span class="score">${score}</span>
+    </div>
+  `).join('');
+  
+  document.getElementById('full-scoreboard').innerHTML = sorted.map(([team, score], i) => `
+    <div class="score-row big">
+      <span class="rank">${i + 1}</span>
+      <span class="team">${team}</span>
+      <span class="score">${score} pts</span>
+    </div>
+  `).join('');
+  
+  if (gameState.roundHistory.length > 0) {
+    document.getElementById('round-history').innerHTML = '<h3>Previous Rounds</h3>' + 
+      gameState.roundHistory.map((r, idx) => {
+        const correctTeams = Object.entries(r.guesses).filter(([_, g]) => g.points > 0).map(([t, g]) => `${t} (+${g.points})`).join(', ');
+        return `<div class="history-item">Round ${idx + 1}: Answer was "${r.answer}" — Correct: ${correctTeams || 'None'}</div>`;
+      }).join('');
+  }
+}
+
+// ==================== VIEW SWITCHING ====================
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  if (view === 'player') initPlayerView();
+  if (view === 'host') initHostView();
+  if (view === 'scores') updateScoreboards();
+}
+
+function restoreUI() {
+  if (gameState.gameStarted) {
+    initHostView();
+    initPlayerView();
+    updatePlayerUI();
+  }
+}
+
+// ==================== INIT ====================
+loadState();
+if (gameState.gameStarted) {
+  initHostView();
+  initPlayerView();
+}
+
+setInterval(() => {
+  const saved = localStorage.getItem('musicGameState');
+  if (saved) {
+    const newState = JSON.parse(saved);
+    if (newState.gameId === gameState.gameId && JSON.stringify(newState) !== JSON.stringify(gameState)) {
+      gameState = newState;
+      restoreUI();
+    }
+  }
+}, 2000);
+</script>
+
+</body>
+</html>

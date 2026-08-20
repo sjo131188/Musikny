@@ -1,246 +1,319 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Music Guessing Game</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Musikgissningsspel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
 
-    .nav-bar {
-      display: flex; gap: 8px; padding: 12px 20px; background: #1a1a2e; border-bottom: 1px solid #333;
-      position: sticky; top: 0; z-index: 100;
-    }
-    .nav-btn {
-      padding: 10px 18px; border: none; border-radius: 8px; background: #252540; color: #aaa;
-      cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
-    }
-    .nav-btn:hover { background: #353560; color: #fff; }
-    .nav-btn.active { background: #e94560; color: #fff; }
+  .hidden { display: none !important; }
 
-    .view { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
-    .view.active { display: block; }
+  .nav-bar {
+    display: flex; gap: 8px; padding: 12px 20px; background: #1a1a2e; border-bottom: 1px solid #333;
+    position: sticky; top: 0; z-index: 100; align-items: center; flex-wrap: wrap;
+  }
+  .nav-btn {
+    padding: 10px 18px; border: none; border-radius: 8px; background: #252540; color: #aaa;
+    cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
+  }
+  .nav-btn:hover { background: #353560; color: #fff; }
+  .nav-btn.active { background: #e94560; color: #fff; }
+  .nav-room { margin-left: auto; color: #ffd700; font-weight: 700; letter-spacing: 2px; }
 
-    .card {
-      background: #1a1a2e; border-radius: 16px; padding: 24px; border: 1px solid #2a2a4a;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    }
+  .view { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+  .view.active { display: block; }
 
-    h2 { color: #e94560; margin-bottom: 20px; font-size: 24px; }
-    h3 { color: #ffd700; margin-bottom: 16px; font-size: 18px; }
-    h4 { color: #aaa; margin: 12px 0 8px; font-size: 14px; }
+  .card {
+    background: #1a1a2e; border-radius: 16px; padding: 24px; border: 1px solid #2a2a4a;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-bottom: 20px;
+  }
 
-    .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a3a5a;
-      background: #252540; color: #fff; font-size: 15px;
-    }
-    .form-group small { display: block; margin-top: 6px; color: #888; font-size: 12px; }
+  h1 { font-size: 34px; color: #fff; margin-bottom: 8px; text-align: center; }
+  h2 { color: #e94560; margin-bottom: 20px; font-size: 24px; }
+  h3 { color: #ffd700; margin-bottom: 16px; font-size: 18px; }
+  h4 { color: #aaa; margin: 12px 0 8px; font-size: 14px; }
+  .tagline { text-align: center; color: #888; margin-bottom: 28px; }
 
-    .btn-primary, .btn-secondary, .btn-danger, .btn-tiny {
-      padding: 12px 24px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
-      cursor: pointer; transition: transform 0.1s;
-    }
-    .btn-primary { background: #e94560; color: #fff; }
-    .btn-primary:hover { background: #ff6b81; transform: translateY(-1px); }
-    .btn-secondary { background: #4a4a6a; color: #fff; }
-    .btn-secondary:hover { background: #5a5a7a; }
-    .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-danger { background: #ff4757; color: #fff; }
-    .btn-danger:hover { background: #ff6b81; }
-    .btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
-    .btn-correct { background: #2ed573; color: #0f2f1a; }
-    .btn-wrong { background: #ff4757; color: #fff; }
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a3a5a;
+    background: #252540; color: #fff; font-size: 15px;
+  }
+  .form-group small { display: block; margin-top: 6px; color: #888; font-size: 12px; }
+  .input-row { display: flex; gap: 10px; }
+  .input-row input { flex: 1; }
 
-    .host-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-    @media (max-width: 900px) { .host-layout { grid-template-columns: 1fr; } }
+  .btn-primary, .btn-secondary, .btn-danger, .btn-tiny {
+    padding: 12px 24px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .btn-primary { background: #e94560; color: #fff; }
+  .btn-primary:hover { background: #ff6b81; transform: translateY(-1px); }
+  .btn-secondary { background: #4a4a6a; color: #fff; }
+  .btn-secondary:hover { background: #5a5a7a; }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-danger { background: #ff4757; color: #fff; }
+  .btn-danger:hover { background: #ff6b81; }
+  .btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+  .btn-correct { background: #2ed573; color: #0f2f1a; }
+  .btn-wrong { background: #ff4757; color: #fff; }
 
-    .round-info { display: flex; gap: 12px; margin-bottom: 16px; }
-    .round-badge, .points-badge {
-      padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 14px;
-    }
-    .round-badge { background: #ffd700; color: #1a1a2e; }
-    .points-badge { background: #2ed573; color: #0f2f1a; }
+  /* Landing */
+  .landing-wrap { max-width: 760px; margin: 60px auto 0; }
+  .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .choice-grid { grid-template-columns: 1fr; } }
+  .choice {
+    background: #1a1a2e; border: 2px solid #2a2a4a; border-radius: 20px; padding: 36px 24px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .choice:hover { border-color: #e94560; transform: translateY(-3px); }
+  .choice .emoji { font-size: 52px; display: block; margin-bottom: 14px; }
+  .choice .title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .choice .desc { color: #888; font-size: 14px; }
 
-    .spotify-box { margin: 16px 0; }
-    .placeholder-text { color: #666; text-align: center; padding: 40px; }
-    .hint { color: #888; font-size: 13px; text-align: center; margin-top: 8px; }
+  .host-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .host-layout { grid-template-columns: 1fr; } }
 
-    .host-controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .round-info { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .round-badge, .points-badge { padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 14px; }
+  .round-badge { background: #ffd700; color: #1a1a2e; }
+  .points-badge { background: #2ed573; color: #0f2f1a; }
 
-    .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
-    .answer-box.hidden { display: none; }
-    .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
+  .spotify-box { margin: 16px 0; }
+  .placeholder-text { color: #666; text-align: center; padding: 40px; }
+  .hint { color: #888; font-size: 13px; text-align: center; margin-top: 8px; }
 
-    .guesses-review { margin: 16px 0; }
-    .guess-item {
-      display: flex; align-items: center; gap: 10px; padding: 10px; background: #1a1a2e;
-      border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap;
-    }
-    .guess-round { color: #888; font-size: 12px; }
+  .host-controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 
-    #qr-code { display: flex; justify-content: center; margin: 16px 0; }
-    #qr-code img, #qr-code canvas { border-radius: 12px; }
-    .join-url { text-align: center; color: #888; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
+  .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
+  .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
 
-    .teams-status ul { list-style: none; }
-    .teams-status li { padding: 6px 0; border-bottom: 1px solid #2a2a4a; color: #ccc; }
+  .guess-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px; background: #1a1a2e;
+    border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .guess-round { color: #888; font-size: 12px; }
 
-    .mini-scoreboard { margin-top: 16px; }
-    .score-row {
-      display: flex; align-items: center; gap: 12px; padding: 10px; background: #252540;
-      border-radius: 8px; margin-bottom: 6px;
-    }
-    .score-row.big { padding: 14px; font-size: 18px; }
-    .score-row .rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-      background: #e94560; color: #fff; border-radius: 50%; font-weight: 700; font-size: 13px; }
-    .score-row.big .rank { width: 36px; height: 36px; font-size: 16px; }
-    .score-row .team { flex: 1; color: #fff; }
-    .score-row .score { font-weight: 700; color: #ffd700; }
+  .room-code {
+    text-align: center; font-size: 44px; font-weight: 900; letter-spacing: 10px;
+    color: #ffd700; background: #252540; border-radius: 12px; padding: 14px; margin-bottom: 14px;
+  }
+  #qr-code, #qr-code-big { display: flex; justify-content: center; margin: 16px 0; }
+  #qr-code img, #qr-code canvas, #qr-code-big img, #qr-code-big canvas { border-radius: 12px; }
+  .join-url { text-align: center; color: #888; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
 
-    /* Player View */
-    .player-container { max-width: 480px; margin: 0 auto; }
-    .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .team-label { background: #e94560; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 600; }
-    .my-score { font-size: 20px; font-weight: 800; color: #ffd700; }
+  .teams-status ul { list-style: none; }
+  .teams-status li { padding: 6px 0; border-bottom: 1px solid #2a2a4a; color: #ccc; }
 
-    .song-indicator { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
-    .song-dot {
-      width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      background: #252540; color: #888; font-weight: 700; border: 2px solid #3a3a5a; transition: all 0.3s;
-    }
-    .song-dot.active { background: #e94560; color: #fff; border-color: #ff6b81; transform: scale(1.1); box-shadow: 0 0 16px rgba(233,69,96,0.4); }
-    .song-dot.played { background: #2ed573; color: #0f2f1a; border-color: #2ed573; }
+  .score-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px; background: #252540;
+    border-radius: 8px; margin-bottom: 6px;
+  }
+  .score-row.big { padding: 14px; font-size: 18px; }
+  .score-row.me { border: 1px solid #e94560; }
+  .score-row .rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    background: #e94560; color: #fff; border-radius: 50%; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .score-row.big .rank { width: 36px; height: 36px; font-size: 16px; }
+  .score-row .team { flex: 1; color: #fff; }
+  .score-row .score { font-weight: 700; color: #ffd700; }
 
-    .points-display { text-align: center; color: #ccc; margin-bottom: 20px; font-size: 16px; }
-    .points-display strong { color: #ffd700; font-size: 24px; }
+  .player-container { max-width: 480px; margin: 0 auto; }
+  .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .team-label { background: #e94560; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 600; }
+  .my-score { font-size: 20px; font-weight: 800; color: #ffd700; }
 
-    .guess-section label { display: block; margin-bottom: 8px; color: #ccc; }
-    .guess-section input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #3a3a5a; background: #252540; color: #fff; font-size: 16px; margin-bottom: 12px; }
-    .btn-guess { width: 100%; padding: 16px; font-size: 18px; }
+  .song-indicator { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+  .song-dot {
+    width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: #252540; color: #888; font-weight: 700; border: 2px solid #3a3a5a; transition: all 0.3s;
+  }
+  .song-dot.active { background: #e94560; color: #fff; border-color: #ff6b81; transform: scale(1.1); box-shadow: 0 0 16px rgba(233,69,96,0.4); }
+  .song-dot.played { background: #2ed573; color: #0f2f1a; border-color: #2ed573; }
 
-    .guess-status { padding: 20px; background: #252540; border-radius: 12px; text-align: center; }
-    .guess-status.hidden { display: none; }
-    .status-message { font-size: 18px; font-weight: 600; color: #ffd700; }
+  .points-display { text-align: center; color: #ccc; margin-bottom: 20px; font-size: 16px; }
+  .points-display strong { color: #ffd700; font-size: 24px; }
 
-    .waiting-message { text-align: center; color: #888; padding: 20px; }
-    .waiting-message.hidden { display: none; }
+  .guess-section label { display: block; margin-bottom: 8px; color: #ccc; }
+  .guess-section input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #3a3a5a; background: #252540; color: #fff; font-size: 16px; margin-bottom: 12px; }
+  .btn-guess { width: 100%; padding: 16px; font-size: 18px; }
 
-    .scoreboard-card { max-width: 700px; margin: 0 auto; }
-    .history-item { padding: 10px; background: #252540; border-radius: 8px; margin-bottom: 8px; color: #ccc; }
-  </style>
+  .guess-status { padding: 20px; background: #252540; border-radius: 12px; text-align: center; }
+  .status-message { font-size: 18px; font-weight: 600; color: #ffd700; }
+
+  .history-item { padding: 10px; background: #252540; border-radius: 8px; margin-bottom: 8px; color: #ccc; }
+
+  /* Scanner modal */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal-inner { background: #1a1a2e; border-radius: 18px; padding: 20px; max-width: 460px; width: 100%; border: 1px solid #2a2a4a; }
+  #scan-video { width: 100%; border-radius: 12px; background: #000; margin: 12px 0; }
+  .scan-status { color: #aaa; font-size: 13px; text-align: center; margin-bottom: 12px; min-height: 18px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions button { flex: 1; }
+</style>
 </head>
 <body>
 
 <div id="app">
   <!-- NAVIGATION -->
-  <div class="nav-bar">
-    <button class="nav-btn" onclick="switchView('setup')">⚙️ Setup</button>
-    <button class="nav-btn active" onclick="switchView('host')">🎤 Host Screen</button>
-    <button class="nav-btn" onclick="switchView('player')">📱 Team Phone</button>
-    <button class="nav-btn" onclick="switchView('scores')">🏆 Scoreboard</button>
+  <div class="nav-bar hidden" id="nav-bar">
+    <button class="nav-btn" data-view="landing">🏠 Start</button>
+    <button class="nav-btn hidden" data-view="host" id="nav-host">🎤 Värdskärm</button>
+    <button class="nav-btn hidden" data-view="player" id="nav-player">📱 Mitt lag</button>
+    <button class="nav-btn" data-view="scores">🏆 Poängtavla</button>
+    <span class="nav-room hidden" id="nav-room"></span>
   </div>
 
-  <!-- SETUP VIEW -->
-  <div id="view-setup" class="view">
-    <div class="card">
-      <h2>🎵 Game Setup</h2>
-      <div class="form-group">
-        <label>Spotify Playlist URL</label>
-        <input type="text" id="playlist-url" placeholder="https://open.spotify.com/playlist/..." value="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M">
-        <small>Paste a public Spotify playlist link. The game will use the first 5 songs.</small>
+  <!-- LANDING -->
+  <div id="view-landing" class="view active">
+    <div class="landing-wrap">
+      <h1>🎵 Musikgissningsspelet</h1>
+      <p class="tagline">Fem låtar, en hemlig person. Ju tidigare ni gissar rätt, desto mer poäng.</p>
+      <div class="choice-grid">
+        <div class="choice" onclick="goHostSetup()">
+          <span class="emoji">🎤</span>
+          <div class="title">Hosta ett spel</div>
+          <div class="desc">Skapa ett rum, visa QR-koden och kör spelet från din skärm.</div>
+        </div>
+        <div class="choice" onclick="goJoin()">
+          <span class="emoji">📱</span>
+          <div class="title">Anslut till spel</div>
+          <div class="desc">Skriv in rumskoden eller skanna värdens QR-kod.</div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Correct Answer (Person)</label>
-        <input type="text" id="correct-answer" placeholder="e.g. Freddie Mercury">
-        <small>The person all 5 songs are clues about.</small>
-      </div>
-      <div class="form-group">
-        <label>Team Names (one per line)</label>
-        <textarea id="team-names" rows="4" placeholder="Team A&#10;Team B&#10;Team C">The Rockstars&#10;The Melodies&#10;The Vinyls</textarea>
-      </div>
-      <button class="btn-primary" onclick="saveSetup()">💾 Save & Start Game</button>
     </div>
   </div>
 
-  <!-- HOST VIEW -->
-  <div id="view-host" class="view active">
+  <!-- HOST SETUP -->
+  <div id="view-host-setup" class="view">
+    <div class="card" style="max-width:700px;margin:0 auto;">
+      <h2>⚙️ Skapa rum</h2>
+      <div class="form-group">
+        <label>Spotify-spellista</label>
+        <div class="input-row">
+          <input type="text" id="playlist-url" placeholder="https://open.spotify.com/playlist/...">
+          <button class="btn-secondary" onclick="openScanner('playlist')">📷 Skanna QR</button>
+        </div>
+        <small>Klistra in en länk, eller skanna en QR-kod som innehåller en Spotify-länk (spellista, album eller låt).</small>
+      </div>
+      <div class="form-group">
+        <label>Rätt svar (personen)</label>
+        <input type="text" id="correct-answer" placeholder="t.ex. Freddie Mercury">
+        <small>Personen som alla fem låtar är ledtrådar om.</small>
+      </div>
+      <button class="btn-primary" onclick="createRoom()">🚀 Skapa rum & starta</button>
+    </div>
+  </div>
+
+  <!-- HOST GAME -->
+  <div id="view-host" class="view">
     <div class="host-layout">
-      <!-- Left: Game Control -->
-      <div class="host-left">
+      <div>
         <div class="card">
-          <h2>🎤 Host Control</h2>
+          <h2>🎤 Värdkontroll</h2>
           <div class="round-info">
-            <div class="round-badge">Round <span id="current-round">1</span> / 5</div>
-            <div class="points-badge" id="current-points">5 points available</div>
+            <div class="round-badge">Låt <span id="current-round">1</span> / 5</div>
+            <div class="points-badge" id="current-points">5 poäng</div>
           </div>
-          
+
           <div class="spotify-box">
             <div id="spotify-embed-container">
-              <p class="placeholder-text">Spotify player will appear here after setup</p>
+              <p class="placeholder-text">Spotify-spelaren visas här</p>
             </div>
-            <p class="hint">💡 Click the play button in the Spotify player to start the song</p>
+            <div class="host-controls" style="margin-top:12px;">
+              <button class="btn-secondary" onclick="spotifyPlay()">▶️ Spela</button>
+              <button class="btn-secondary" onclick="spotifyPause()">⏸️ Pausa</button>
+              <button class="btn-secondary" onclick="openScanner('playlist')">📷 Skanna ny spellista</button>
+            </div>
+            <p class="hint">💡 Skanna en QR-kod med en Spotify-länk så laddas och startas spellistan direkt.</p>
           </div>
 
           <div class="host-controls">
-            <button class="btn-secondary" onclick="prevSong()" id="btn-prev">⏮️ Previous Song</button>
-            <button class="btn-primary" onclick="nextSong()" id="btn-next">Next Song ⏭️</button>
-            <button class="btn-danger" onclick="revealAnswer()">🔓 Reveal Answer</button>
+            <button class="btn-secondary" onclick="prevSong()" id="btn-prev">⏮️ Föregående låt</button>
+            <button class="btn-primary" onclick="nextSong()" id="btn-next">Nästa låt ⏭️</button>
+            <button class="btn-danger" onclick="revealAnswer()">🔓 Avslöja svaret</button>
           </div>
 
           <div id="answer-reveal" class="answer-box hidden">
-            <h3>The answer is:</h3>
+            <h3>Svaret är:</h3>
             <div class="answer-text" id="revealed-answer">???</div>
-            <div class="guesses-review">
-              <h4>Review Guesses:</h4>
-              <div id="guesses-list"></div>
-            </div>
-            <button class="btn-primary" onclick="finishRound()">✅ Finish Round & Score</button>
+            <h4>Granska gissningar:</h4>
+            <div id="guesses-list"></div>
+            <button class="btn-primary" style="margin-top:12px;" onclick="finishRound()">✅ Avsluta runda & poängsätt</button>
           </div>
+        </div>
+
+        <div class="card">
+          <h3>🔁 Ny runda</h3>
+          <div class="form-group">
+            <label>Ny spellista</label>
+            <div class="input-row">
+              <input type="text" id="new-playlist" placeholder="Spotify-länk">
+              <button class="btn-secondary" onclick="openScanner('playlist')">📷 Skanna</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nytt rätt svar</label>
+            <input type="text" id="new-answer" placeholder="t.ex. Beyoncé">
+          </div>
+          <button class="btn-primary" onclick="startNewRound()">▶️ Starta ny runda</button>
         </div>
       </div>
 
-      <!-- Right: QR & Teams -->
-      <div class="host-right">
+      <div>
         <div class="card">
-          <h3>📱 Join Game</h3>
+          <h3>📱 Anslut till rummet</h3>
+          <div class="room-code" id="room-code-display">----</div>
           <div id="qr-code"></div>
-          <p class="join-url" id="join-url">Scan to join as a team</p>
+          <p class="join-url" id="join-url"></p>
           <div class="teams-status">
-            <h4>Connected Teams:</h4>
+            <h4>Anslutna lag:</h4>
             <ul id="connected-teams"></ul>
           </div>
         </div>
-        
-        <div class="card mini-scoreboard">
-          <h3>🏆 Live Scores</h3>
+
+        <div class="card">
+          <h3>🏆 Live-poäng</h3>
           <div id="mini-scores"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PLAYER VIEW -->
+  <!-- JOIN -->
+  <div id="view-join" class="view">
+    <div class="card" style="max-width:460px;margin:0 auto;">
+      <h2>📱 Anslut till spel</h2>
+      <div class="form-group">
+        <label>Rumskod</label>
+        <div class="input-row">
+          <input type="text" id="join-code" placeholder="ABCD" maxlength="4" style="text-transform:uppercase;letter-spacing:6px;font-size:22px;text-align:center;">
+          <button class="btn-secondary" onclick="openScanner('room')">📷 Skanna</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Lagnamn</label>
+        <input type="text" id="join-team" placeholder="t.ex. Vinylerna">
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="joinRoom()">Anslut</button>
+      <p class="hint" id="join-error" style="color:#ff6b81;"></p>
+    </div>
+  </div>
+
+  <!-- PLAYER -->
   <div id="view-player" class="view">
     <div class="player-container">
-      <div class="card" id="player-login">
-        <h2>🎮 Join Game</h2>
-        <div class="form-group">
-          <label>Select Your Team</label>
-          <select id="player-team-select"></select>
-        </div>
-        <button class="btn-primary" onclick="joinGame()">Join Game</button>
-      </div>
-
-      <div class="card hidden" id="player-game">
+      <div class="card">
         <div class="player-header">
-          <span class="team-label" id="my-team">Team</span>
-          <span class="my-score" id="my-score">0 pts</span>
+          <span class="team-label" id="my-team">Lag</span>
+          <span class="my-score" id="my-score">0 p</span>
         </div>
-        
+
         <div class="song-indicator">
           <div class="song-dot active" id="dot-1">1</div>
           <div class="song-dot" id="dot-2">2</div>
@@ -248,358 +321,581 @@
           <div class="song-dot" id="dot-4">4</div>
           <div class="song-dot" id="dot-5">5</div>
         </div>
-        <div class="points-display">Current value: <strong id="song-value">5</strong> pts</div>
+        <div class="points-display">Värde just nu: <strong id="song-value">5</strong> p</div>
 
         <div class="guess-section" id="guess-section">
-          <label>Who is the person?</label>
-          <input type="text" id="player-guess" placeholder="Enter your guess...">
-          <button class="btn-primary btn-guess" onclick="submitGuess()">Submit Guess</button>
+          <label>Vem är personen?</label>
+          <input type="text" id="player-guess" placeholder="Skriv din gissning...">
+          <button class="btn-primary btn-guess" onclick="submitGuess()">Skicka gissning</button>
         </div>
 
         <div class="guess-status hidden" id="guess-status">
           <div class="status-message" id="status-msg"></div>
         </div>
+      </div>
 
-        <div class="waiting-message hidden" id="waiting-msg">
-          ⏳ Waiting for host to start next song...
-        </div>
+      <div class="card">
+        <h3>🏆 Ställning</h3>
+        <div id="player-scores"></div>
       </div>
     </div>
   </div>
 
-  <!-- SCOREBOARD VIEW -->
+  <!-- SCOREBOARD -->
   <div id="view-scores" class="view">
-    <div class="card scoreboard-card">
-      <h2>🏆 Full Scoreboard</h2>
+    <div class="card" style="max-width:700px;margin:0 auto;">
+      <h2>🏆 Poängtavla</h2>
       <div id="full-scoreboard"></div>
-      <div class="round-history" id="round-history"></div>
+      <div id="round-history"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCANNER MODAL -->
+<div class="modal hidden" id="scanner-modal">
+  <div class="modal-inner">
+    <h3 id="scan-title">Skanna QR-kod</h3>
+    <video id="scan-video" playsinline muted></video>
+    <p class="scan-status" id="scan-status"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeScanner()">Avbryt</button>
     </div>
   </div>
 </div>
 
 <script>
-// ==================== GAME STATE ====================
-let gameState = {
-  playlistUrl: '',
-  correctAnswer: '',
-  teams: [],
-  scores: {},
-  currentRound: 1,
-  guesses: {},
-  roundHistory: [],
-  gameStarted: false,
-  gameId: 'game-' + Math.random().toString(36).substr(2, 9)
-};
+// ==================== KONFIG ====================
+// Lämna tomt = allt synkas lokalt (samma webbläsare/enhet, flera flikar).
+// Sätt till din egen backend-URL för synk mellan riktiga telefoner:
+//   GET  <url>/<RUMSKOD>  -> returnerar rumsobjektet som JSON
+//   PUT  <url>/<RUMSKOD>  -> sparar rumsobjektet
+const REMOTE = { url: '' };
 
-function loadState() {
-  const saved = localStorage.getItem('musicGameState');
-  if (saved) {
-    gameState = JSON.parse(saved);
-    restoreUI();
-  }
-}
+const ROOM_PREFIX = 'mg_room_';
+const ME_PREFIX = 'mg_me_';
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-function saveState() {
-  localStorage.setItem('musicGameState', JSON.stringify(gameState));
-  broadcastUpdate();
-}
+let room = null;
+let myRole = null;      // 'host' | 'player'
+let myTeamId = null;
+let currentCode = null;
+let currentView = 'landing';
 
-let bc;
+// ==================== SYNK ====================
+let bc = null;
 try {
   bc = new BroadcastChannel('music_game_channel');
-  bc.onmessage = (event) => {
-    if (event.data.gameId === gameState.gameId) {
-      gameState = event.data.state;
-      restoreUI();
+  bc.onmessage = (e) => {
+    if (!currentCode || e.data.code !== currentCode) return;
+    if (!room || (e.data.state.updatedAt || 0) > (room.updatedAt || 0)) {
+      room = e.data.state;
+      render();
     }
   };
-} catch(e) {}
+} catch (e) {}
 
-function broadcastUpdate() {
-  if (bc) {
-    bc.postMessage({ gameId: gameState.gameId, state: gameState });
+async function netRead(code) {
+  if (REMOTE.url) {
+    try {
+      const r = await fetch(REMOTE.url.replace(/\/$/, '') + '/' + code);
+      if (r.ok) return await r.json();
+    } catch (e) {}
+    return null;
+  }
+  const raw = localStorage.getItem(ROOM_PREFIX + code);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function netWrite(state) {
+  localStorage.setItem(ROOM_PREFIX + state.code, JSON.stringify(state));
+  if (bc) bc.postMessage({ code: state.code, state });
+  if (REMOTE.url) {
+    try {
+      await fetch(REMOTE.url.replace(/\/$/, '') + '/' + state.code, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      });
+    } catch (e) {}
   }
 }
 
-// ==================== SETUP ====================
-function saveSetup() {
+// Läs senaste versionen, ändra, spara. Gör att flera enheter inte skriver över varandra.
+async function mutate(fn) {
+  const latest = (await netRead(currentCode)) || room;
+  if (!latest) return;
+  fn(latest);
+  latest.updatedAt = Date.now();
+  room = latest;
+  await netWrite(latest);
+  render();
+}
+
+setInterval(async () => {
+  if (!currentCode) return;
+  const latest = await netRead(currentCode);
+  if (latest && (latest.updatedAt || 0) > (room?.updatedAt || 0)) {
+    room = latest;
+    render();
+  }
+}, 1500);
+
+// ==================== SPOTIFY ====================
+let spotifyAPI = null, spotifyController = null, loadedUri = null, pendingUri = null;
+
+window.onSpotifyIframeApiReady = (API) => {
+  spotifyAPI = API;
+  if (pendingUri) mountSpotify(pendingUri);
+};
+
+function toSpotifyUri(input) {
+  if (!input) return null;
+  const s = input.trim();
+  let m = s.match(/spotify:(playlist|album|track|artist):([A-Za-z0-9]+)/);
+  if (m) return 'spotify:' + m[1] + ':' + m[2];
+  m = s.match(/open\.spotify\.com\/(?:embed\/)?(?:intl-[a-z]+\/)?(playlist|album|track|artist)\/([A-Za-z0-9]+)/);
+  if (m) return 'spotify:' + m[1] + ':' + m[2];
+  return null;
+}
+
+function mountSpotify(uri) {
+  const box = document.getElementById('spotify-embed-container');
+  if (!uri || !box) return;
+  if (loadedUri === uri && spotifyController) return;
+
+  if (!spotifyAPI) {
+    pendingUri = uri;
+    // Reserv: vanlig iframe om iframe-API:t inte hunnit ladda
+    const id = uri.split(':');
+    box.innerHTML = '<iframe src="https://open.spotify.com/embed/' + id[1] + '/' + id[2] +
+      '" width="100%" height="380" frameborder="0" allow="encrypted-media; autoplay"></iframe>';
+    loadedUri = uri;
+    return;
+  }
+
+  if (spotifyController) {
+    spotifyController.loadUri(uri);
+    loadedUri = uri;
+    setTimeout(() => { try { spotifyController.play(); } catch (e) {} }, 600);
+    return;
+  }
+
+  box.innerHTML = '<div id="spotify-el"></div>';
+  spotifyAPI.createController(
+    document.getElementById('spotify-el'),
+    { uri, width: '100%', height: 380 },
+    (ctrl) => {
+      spotifyController = ctrl;
+      loadedUri = uri;
+      setTimeout(() => { try { ctrl.play(); } catch (e) {} }, 600);
+    }
+  );
+}
+
+function spotifyPlay() { try { spotifyController && spotifyController.play(); } catch (e) {} }
+function spotifyPause() { try { spotifyController && spotifyController.pause(); } catch (e) {} }
+
+// ==================== QR-SKANNER ====================
+let scanStream = null, scanRAF = null, scanTarget = null, scanDetector = null;
+
+async function openScanner(target) {
+  scanTarget = target;
+  document.getElementById('scan-title').textContent =
+    target === 'playlist' ? '📷 Skanna Spotify-QR' : '📷 Skanna rummets QR';
+  document.getElementById('scan-status').textContent = 'Startar kameran...';
+  document.getElementById('scanner-modal').classList.remove('hidden');
+
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  } catch (e) {
+    document.getElementById('scan-status').textContent =
+      'Kameran kunde inte startas. Sidan måste öppnas via https (eller localhost) och kameran behöver godkännas.';
+    return;
+  }
+
+  const video = document.getElementById('scan-video');
+  video.srcObject = scanStream;
+  await video.play();
+  document.getElementById('scan-status').textContent = 'Rikta kameran mot QR-koden...';
+
+  if ('BarcodeDetector' in window) {
+    try { scanDetector = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { scanDetector = null; }
+  }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const tick = async () => {
+    if (!scanStream) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      let text = null;
+      if (scanDetector) {
+        try {
+          const codes = await scanDetector.detect(video);
+          if (codes.length) text = codes[0].rawValue;
+        } catch (e) {}
+      }
+      if (!text && window.jsQR) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const res = jsQR(img.data, img.width, img.height);
+        if (res) text = res.data;
+      }
+      if (text) { handleScan(text); return; }
+    }
+    scanRAF = requestAnimationFrame(tick);
+  };
+  scanRAF = requestAnimationFrame(tick);
+}
+
+function closeScanner() {
+  if (scanRAF) cancelAnimationFrame(scanRAF);
+  scanRAF = null;
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  document.getElementById('scanner-modal').classList.add('hidden');
+}
+
+function handleScan(text) {
+  if (scanTarget === 'playlist') {
+    const uri = toSpotifyUri(text);
+    if (!uri) {
+      document.getElementById('scan-status').textContent = 'Det där var ingen Spotify-länk. Försök igen.';
+      scanRAF = requestAnimationFrame(() => openScannerContinue());
+      return;
+    }
+    closeScanner();
+    applyPlaylist(uri);
+  } else {
+    let code = null;
+    const m = text.match(/[?&]room=([A-Z0-9]{4})/i);
+    if (m) code = m[1].toUpperCase();
+    else if (/^[A-Z0-9]{4}$/i.test(text.trim())) code = text.trim().toUpperCase();
+    if (!code) {
+      document.getElementById('scan-status').textContent = 'Ingen rumskod hittades i koden.';
+      return;
+    }
+    closeScanner();
+    document.getElementById('join-code').value = code;
+    if (document.getElementById('join-team').value.trim()) joinRoom();
+  }
+}
+
+function openScannerContinue() { /* fortsätter loopa via befintlig ström */ }
+
+function applyPlaylist(uri) {
+  const url = 'https://open.spotify.com/' + uri.split(':')[1] + '/' + uri.split(':')[2];
+  if (currentView === 'host-setup' || !room) {
+    document.getElementById('playlist-url').value = url;
+    return;
+  }
+  mutate(s => { s.playlistUri = uri; s.playlistUrl = url; });
+  mountSpotify(uri);
+}
+
+// ==================== RUM ====================
+function randCode() {
+  let s = '';
+  for (let i = 0; i < 4; i++) s += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return s;
+}
+
+function joinUrlFor(code) {
+  return location.origin + location.pathname + '?room=' + code;
+}
+
+async function createRoom() {
   const url = document.getElementById('playlist-url').value.trim();
   const answer = document.getElementById('correct-answer').value.trim();
-  const teamsRaw = document.getElementById('team-names').value.trim();
-  
-  if (!url || !answer || !teamsRaw) {
-    alert('Please fill in all fields');
-    return;
-  }
-  
-  gameState.playlistUrl = url;
-  gameState.correctAnswer = answer;
-  gameState.teams = teamsRaw.split('\n').map(t => t.trim()).filter(t => t);
-  gameState.scores = {};
-  gameState.teams.forEach(t => gameState.scores[t] = 0);
-  gameState.currentRound = 1;
-  gameState.guesses = {};
-  gameState.roundHistory = [];
-  gameState.gameStarted = true;
-  
-  saveState();
-  initHostView();
+  if (!url || !answer) { alert('Fyll i både spellista och rätt svar.'); return; }
+  const uri = toSpotifyUri(url);
+  if (!uri) { alert('Kunde inte tolka Spotify-länken.'); return; }
+
+  let code = randCode();
+  while (localStorage.getItem(ROOM_PREFIX + code)) code = randCode();
+
+  room = {
+    code,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    playlistUri: uri,
+    playlistUrl: url,
+    answer,
+    round: 1,
+    revealed: false,
+    teams: {},
+    guesses: {},
+    history: []
+  };
+  currentCode = code;
+  myRole = 'host';
+  localStorage.setItem('mg_host_' + code, '1');
+  await netWrite(room);
+
   switchView('host');
+  renderQR();
+  mountSpotify(uri);
+  render();
 }
 
-// ==================== HOST VIEW ====================
-function initHostView() {
-  const joinUrl = window.location.href.split('#')[0] + '?game=' + gameState.gameId;
-  document.getElementById('join-url').textContent = 'Scan to join or visit: ' + joinUrl;
-  
-  const qrContainer = document.getElementById('qr-code');
-  qrContainer.innerHTML = '';
-  new QRCode(qrContainer, {
-    text: joinUrl,
-    width: 180,
-    height: 180,
-    colorDark: '#1a1a2e',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.H
+async function joinRoom() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const name = document.getElementById('join-team').value.trim();
+  const err = document.getElementById('join-error');
+  err.textContent = '';
+  if (code.length !== 4) { err.textContent = 'Rumskoden är fyra tecken.'; return; }
+  if (!name) { err.textContent = 'Skriv ett lagnamn.'; return; }
+
+  const state = await netRead(code);
+  if (!state) { err.textContent = 'Hittade inget rum med koden ' + code + '.'; return; }
+
+  currentCode = code;
+  room = state;
+  myRole = 'player';
+  myTeamId = localStorage.getItem(ME_PREFIX + code) || 'team-' + Math.random().toString(36).slice(2, 9);
+  localStorage.setItem(ME_PREFIX + code, myTeamId);
+
+  await mutate(s => {
+    s.teams[myTeamId] = { name, score: (s.teams[myTeamId]?.score) || 0, joinedAt: Date.now() };
   });
-  
-  const embedContainer = document.getElementById('spotify-embed-container');
-  let embedUrl = gameState.playlistUrl;
-  if (embedUrl.includes('open.spotify.com')) {
-    embedUrl = embedUrl.replace('open.spotify.com/', 'open.spotify.com/embed/');
-  }
-  embedContainer.innerHTML = `<iframe src="${embedUrl}" width="100%" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media; autoplay"></iframe>`;
-  
-  document.getElementById('revealed-answer').textContent = gameState.correctAnswer;
-  updateHostUI();
+
+  switchView('player');
 }
 
-function updateHostUI() {
-  document.getElementById('current-round').textContent = gameState.currentRound;
-  const points = 6 - gameState.currentRound;
-  document.getElementById('current-points').textContent = points + ' points available';
-  
-  document.getElementById('btn-prev').disabled = gameState.currentRound <= 1;
-  document.getElementById('btn-next').disabled = gameState.currentRound >= 5;
-  
-  const teamsList = document.getElementById('connected-teams');
-  teamsList.innerHTML = gameState.teams.map(t => 
-    `<li>${t} ${gameState.guesses[t] ? '✅ guessed' : '⏳ waiting'}</li>`
-  ).join('');
-  
-  updateScoreboards();
-  updateGuessesList();
+// ==================== VÄRDENS SPELLOGIK ====================
+function nextSong() { if (room.round < 5) mutate(s => { s.round++; }); }
+function prevSong() { if (room.round > 1) mutate(s => { s.round--; }); }
+function revealAnswer() { mutate(s => { s.revealed = true; }); }
+
+function isCorrect(guess) {
+  return (guess || '').toLowerCase().trim() === (room.answer || '').toLowerCase().trim();
 }
 
-function nextSong() {
-  if (gameState.currentRound < 5) {
-    gameState.currentRound++;
-    saveState();
-    updateHostUI();
-  }
-}
-
-function prevSong() {
-  if (gameState.currentRound > 1) {
-    gameState.currentRound--;
-    saveState();
-    updateHostUI();
-  }
-}
-
-function revealAnswer() {
-  document.getElementById('answer-reveal').classList.remove('hidden');
-}
-
-function updateGuessesList() {
-  const container = document.getElementById('guesses-list');
-  const guesses = Object.entries(gameState.guesses);
-  if (guesses.length === 0) {
-    container.innerHTML = '<p>No guesses yet</p>';
-    return;
-  }
-  container.innerHTML = guesses.map(([team, data]) => {
-    const isCorrect = data.guess.toLowerCase().trim() === gameState.correctAnswer.toLowerCase().trim();
-    const points = isCorrect ? (6 - data.round) : 0;
-    return `
-      <div class="guess-item">
-        <strong>${team}</strong>: "${data.guess}" 
-        <span class="guess-round">(song ${data.round})</span>
-        <button class="btn-tiny ${isCorrect ? 'btn-correct' : 'btn-wrong'}" onclick="markGuess('${team}', ${isCorrect}, ${points})">
-          ${isCorrect ? '✅ Correct (' + points + ' pts)' : '❌ Wrong (0 pts)'}
-        </button>
-      </div>
-    `;
-  }).join('');
-}
-
-function markGuess(team, isCorrect, points) {
-  if (!gameState.scores[team]) gameState.scores[team] = 0;
-  if (isCorrect) {
-    gameState.scores[team] += points;
-  }
-  gameState.guesses[team] = { ...gameState.guesses[team], scored: true, points: isCorrect ? points : 0 };
-  saveState();
-  updateHostUI();
+function markGuess(teamId, correct) {
+  mutate(s => {
+    const g = s.guesses[teamId];
+    if (!g || g.scored) return;
+    const pts = correct ? (6 - g.round) : 0;
+    s.teams[teamId].score = (s.teams[teamId].score || 0) + pts;
+    g.scored = true;
+    g.points = pts;
+  });
 }
 
 function finishRound() {
-  Object.entries(gameState.guesses).forEach(([team, data]) => {
-    if (!data.scored) {
-      const isCorrect = data.guess.toLowerCase().trim() === gameState.correctAnswer.toLowerCase().trim();
-      const points = isCorrect ? (6 - data.round) : 0;
-      if (isCorrect) {
-        gameState.scores[team] = (gameState.scores[team] || 0) + points;
-      }
-      gameState.guesses[team] = { ...data, scored: true, points };
-    }
+  mutate(s => {
+    Object.entries(s.guesses).forEach(([id, g]) => {
+      if (g.scored) return;
+      const correct = (g.guess || '').toLowerCase().trim() === (s.answer || '').toLowerCase().trim();
+      const pts = correct ? (6 - g.round) : 0;
+      if (s.teams[id]) s.teams[id].score = (s.teams[id].score || 0) + pts;
+      g.scored = true;
+      g.points = pts;
+    });
+    s.history.push({
+      answer: s.answer,
+      guesses: JSON.parse(JSON.stringify(s.guesses)),
+      teams: Object.fromEntries(Object.entries(s.teams).map(([id, t]) => [id, t.name]))
+    });
+    s.guesses = {};
+    s.round = 1;
+    s.revealed = false;
   });
-  
-  gameState.roundHistory.push({
-    round: gameState.currentRound,
-    answer: gameState.correctAnswer,
-    guesses: { ...gameState.guesses }
+}
+
+function startNewRound() {
+  const url = document.getElementById('new-playlist').value.trim();
+  const answer = document.getElementById('new-answer').value.trim();
+  if (!answer) { alert('Skriv det nya rätta svaret.'); return; }
+  const uri = url ? toSpotifyUri(url) : room.playlistUri;
+  if (url && !uri) { alert('Kunde inte tolka Spotify-länken.'); return; }
+
+  mutate(s => {
+    s.answer = answer;
+    if (uri) { s.playlistUri = uri; s.playlistUrl = url || s.playlistUrl; }
+    s.guesses = {};
+    s.round = 1;
+    s.revealed = false;
   });
-  
-  gameState.guesses = {};
-  gameState.currentRound = 1;
-  
-  saveState();
-  document.getElementById('answer-reveal').classList.add('hidden');
-  updateHostUI();
-  alert('Round finished! Go to Setup to start a new round with a new playlist.');
+  document.getElementById('new-playlist').value = '';
+  document.getElementById('new-answer').value = '';
+  if (uri) mountSpotify(uri);
 }
 
-// ==================== PLAYER VIEW ====================
-function initPlayerView() {
-  const select = document.getElementById('player-team-select');
-  select.innerHTML = gameState.teams.map(t => `<option value="${t}">${t}</option>`).join('');
+// ==================== SPELARENS LOGIK ====================
+function submitGuess() {
+  const guess = document.getElementById('player-guess').value.trim();
+  if (!guess) return;
+  mutate(s => {
+    s.guesses[myTeamId] = { guess, round: s.round, scored: false, points: 0 };
+  });
+  document.getElementById('player-guess').value = '';
 }
 
-function joinGame() {
-  const team = document.getElementById('player-team-select').value;
-  if (!team) return;
-  
-  localStorage.setItem('myTeam', team);
-  document.getElementById('player-login').classList.add('hidden');
-  document.getElementById('player-game').classList.remove('hidden');
-  document.getElementById('my-team').textContent = team;
-  updatePlayerUI();
+// ==================== RENDERING ====================
+function render() {
+  if (!room) return;
+  document.getElementById('nav-room').textContent = 'Rum ' + room.code;
+  document.getElementById('nav-room').classList.remove('hidden');
+  renderHost();
+  renderPlayer();
+  renderScores();
 }
 
-function updatePlayerUI() {
-  const team = localStorage.getItem('myTeam');
-  if (!team) return;
-  
-  document.getElementById('my-score').textContent = (gameState.scores[team] || 0) + ' pts';
-  document.getElementById('song-value').textContent = 6 - gameState.currentRound;
-  
+function renderHost() {
+  if (myRole !== 'host') return;
+  document.getElementById('room-code-display').textContent = room.code;
+  document.getElementById('join-url').textContent = joinUrlFor(room.code);
+  document.getElementById('current-round').textContent = room.round;
+  document.getElementById('current-points').textContent = (6 - room.round) + ' poäng';
+  document.getElementById('btn-prev').disabled = room.round <= 1;
+  document.getElementById('btn-next').disabled = room.round >= 5;
+  document.getElementById('revealed-answer').textContent = room.answer;
+  document.getElementById('answer-reveal').classList.toggle('hidden', !room.revealed);
+
+  const teams = Object.entries(room.teams);
+  document.getElementById('connected-teams').innerHTML = teams.length
+    ? teams.map(([id, t]) => '<li>' + esc(t.name) + ' ' + (room.guesses[id] ? '✅ har gissat' : '⏳ väntar') + '</li>').join('')
+    : '<li style="color:#666">Inga lag anslutna än</li>';
+
+  const guesses = Object.entries(room.guesses);
+  document.getElementById('guesses-list').innerHTML = guesses.length
+    ? guesses.map(([id, g]) => {
+        const name = room.teams[id]?.name || 'Okänt lag';
+        const guessed = isCorrect(g.guess);
+        const pts = 6 - g.round;
+        if (g.scored) {
+          return '<div class="guess-item"><strong>' + esc(name) + '</strong>: "' + esc(g.guess) + '" ' +
+            '<span class="guess-round">(låt ' + g.round + ')</span> ' +
+            '<span style="color:' + (g.points > 0 ? '#2ed573' : '#ff6b81') + '">' +
+            (g.points > 0 ? '+' + g.points + ' p' : '0 p') + '</span></div>';
+        }
+        return '<div class="guess-item"><strong>' + esc(name) + '</strong>: "' + esc(g.guess) + '" ' +
+          '<span class="guess-round">(låt ' + g.round + ')</span>' +
+          '<button class="btn-tiny btn-correct" onclick="markGuess(\'' + id + '\', true)">✅ Rätt (' + pts + ' p)</button>' +
+          '<button class="btn-tiny btn-wrong" onclick="markGuess(\'' + id + '\', false)">❌ Fel</button>' +
+          (guessed ? ' <span class="guess-round">matchar svaret</span>' : '') +
+          '</div>';
+      }).join('')
+    : '<p style="color:#666">Inga gissningar än</p>';
+
+  document.getElementById('mini-scores').innerHTML = scoreRows(false);
+}
+
+function renderPlayer() {
+  if (myRole !== 'player') return;
+  const me = room.teams[myTeamId];
+  if (!me) return;
+  document.getElementById('my-team').textContent = me.name;
+  document.getElementById('my-score').textContent = (me.score || 0) + ' p';
+  document.getElementById('song-value').textContent = 6 - room.round;
+
   for (let i = 1; i <= 5; i++) {
     const dot = document.getElementById('dot-' + i);
     dot.classList.remove('active', 'played');
-    if (i < gameState.currentRound) dot.classList.add('played');
-    if (i === gameState.currentRound) dot.classList.add('active');
+    if (i < room.round) dot.classList.add('played');
+    if (i === room.round) dot.classList.add('active');
   }
-  
-  const myGuess = gameState.guesses[team];
-  if (myGuess && !myGuess.scored) {
-    document.getElementById('guess-section').classList.add('hidden');
-    document.getElementById('guess-status').classList.remove('hidden');
-    document.getElementById('status-msg').textContent = `You guessed: "${myGuess.guess}"`;
-  } else if (myGuess && myGuess.scored) {
-    document.getElementById('guess-section').classList.add('hidden');
-    document.getElementById('guess-status').classList.remove('hidden');
-    const result = myGuess.points > 0 ? `✅ Correct! +${myGuess.points} points` : '❌ Wrong! 0 points';
-    document.getElementById('status-msg').textContent = result;
+
+  const g = room.guesses[myTeamId];
+  const sec = document.getElementById('guess-section');
+  const st = document.getElementById('guess-status');
+  if (!g) {
+    sec.classList.remove('hidden');
+    st.classList.add('hidden');
   } else {
-    document.getElementById('guess-section').classList.remove('hidden');
-    document.getElementById('guess-status').classList.add('hidden');
+    sec.classList.add('hidden');
+    st.classList.remove('hidden');
+    document.getElementById('status-msg').textContent = g.scored
+      ? (g.points > 0 ? '✅ Rätt! +' + g.points + ' poäng' : '❌ Fel svar, 0 poäng')
+      : 'Du gissade: "' + g.guess + '" — väntar på värden';
   }
+
+  document.getElementById('player-scores').innerHTML = scoreRows(false);
 }
 
-function submitGuess() {
-  const team = localStorage.getItem('myTeam');
-  const guess = document.getElementById('player-guess').value.trim();
-  if (!guess || !team) return;
-  
-  gameState.guesses[team] = {
-    guess: guess,
-    round: gameState.currentRound,
-    scored: false,
-    points: 0
-  };
-  
-  saveState();
-  document.getElementById('player-guess').value = '';
-  updatePlayerUI();
+function renderScores() {
+  document.getElementById('full-scoreboard').innerHTML = scoreRows(true);
+  const h = document.getElementById('round-history');
+  h.innerHTML = room.history.length
+    ? '<h3 style="margin-top:24px;">Tidigare rundor</h3>' + room.history.map((r, i) => {
+        const winners = Object.entries(r.guesses).filter(([_, g]) => g.points > 0)
+          .map(([id, g]) => esc(r.teams[id] || '?') + ' (+' + g.points + ')').join(', ');
+        return '<div class="history-item">Runda ' + (i + 1) + ': svaret var "' + esc(r.answer) + '" — rätt: ' + (winners || 'ingen') + '</div>';
+      }).join('')
+    : '';
 }
 
-// ==================== SCOREBOARD ====================
-function updateScoreboards() {
-  const sorted = Object.entries(gameState.scores).sort((a, b) => b[1] - a[1]);
-  
-  document.getElementById('mini-scores').innerHTML = sorted.map(([team, score], i) => `
-    <div class="score-row">
-      <span class="rank">${i + 1}</span>
-      <span class="team">${team}</span>
-      <span class="score">${score}</span>
-    </div>
-  `).join('');
-  
-  document.getElementById('full-scoreboard').innerHTML = sorted.map(([team, score], i) => `
-    <div class="score-row big">
-      <span class="rank">${i + 1}</span>
-      <span class="team">${team}</span>
-      <span class="score">${score} pts</span>
-    </div>
-  `).join('');
-  
-  if (gameState.roundHistory.length > 0) {
-    document.getElementById('round-history').innerHTML = '<h3>Previous Rounds</h3>' + 
-      gameState.roundHistory.map((r, idx) => {
-        const correctTeams = Object.entries(r.guesses).filter(([_, g]) => g.points > 0).map(([t, g]) => `${t} (+${g.points})`).join(', ');
-        return `<div class="history-item">Round ${idx + 1}: Answer was "${r.answer}" — Correct: ${correctTeams || 'None'}</div>`;
-      }).join('');
-  }
+function scoreRows(big) {
+  const sorted = Object.entries(room.teams).sort((a, b) => (b[1].score || 0) - (a[1].score || 0));
+  if (!sorted.length) return '<p style="color:#666">Inga lag än</p>';
+  return sorted.map(([id, t], i) =>
+    '<div class="score-row' + (big ? ' big' : '') + (id === myTeamId ? ' me' : '') + '">' +
+    '<span class="rank">' + (i + 1) + '</span>' +
+    '<span class="team">' + esc(t.name) + '</span>' +
+    '<span class="score">' + (t.score || 0) + (big ? ' p' : '') + '</span></div>'
+  ).join('');
 }
 
-// ==================== VIEW SWITCHING ====================
+function renderQR() {
+  const box = document.getElementById('qr-code');
+  box.innerHTML = '';
+  new QRCode(box, {
+    text: joinUrlFor(room.code),
+    width: 190, height: 190,
+    colorDark: '#1a1a2e', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ==================== VYER ====================
 function switchView(view) {
+  currentView = view;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  
-  if (view === 'player') initPlayerView();
-  if (view === 'host') initHostView();
-  if (view === 'scores') updateScoreboards();
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.getElementById('nav-bar').classList.toggle('hidden', view === 'landing' && !room);
+  document.getElementById('nav-host').classList.toggle('hidden', myRole !== 'host');
+  document.getElementById('nav-player').classList.toggle('hidden', myRole !== 'player');
+  if (room) render();
 }
 
-function restoreUI() {
-  if (gameState.gameStarted) {
-    initHostView();
-    initPlayerView();
-    updatePlayerUI();
-  }
-}
+document.querySelectorAll('.nav-btn').forEach(b => {
+  b.addEventListener('click', () => switchView(b.dataset.view));
+});
 
-// ==================== INIT ====================
-loadState();
-if (gameState.gameStarted) {
-  initHostView();
-  initPlayerView();
-}
+function goHostSetup() { switchView('host-setup'); }
+function goJoin() { switchView('join'); }
 
-setInterval(() => {
-  const saved = localStorage.getItem('musicGameState');
-  if (saved) {
-    const newState = JSON.parse(saved);
-    if (newState.gameId === gameState.gameId && JSON.stringify(newState) !== JSON.stringify(gameState)) {
-      gameState = newState;
-      restoreUI();
+// ==================== START ====================
+(async function init() {
+  const params = new URLSearchParams(location.search);
+  const code = (params.get('room') || '').toUpperCase();
+  if (code) {
+    const state = await netRead(code);
+    document.getElementById('join-code').value = code;
+    if (state && localStorage.getItem('mg_host_' + code)) {
+      // Värden återvänder till sitt eget rum
+      room = state; currentCode = code; myRole = 'host';
+      switchView('host'); renderQR(); mountSpotify(state.playlistUri); render();
+      return;
     }
+    const saved = localStorage.getItem(ME_PREFIX + code);
+    if (state && saved && state.teams[saved]) {
+      room = state; currentCode = code; myRole = 'player'; myTeamId = saved;
+      switchView('player'); render();
+      return;
+    }
+    switchView('join');
+    return;
   }
-}, 2000);
+  switchView('landing');
+})();
 </script>
 
 </body>

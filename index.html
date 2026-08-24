@@ -7,7 +7,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
@@ -46,9 +45,6 @@
     width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a3a5a;
     background: #252540; color: #fff; font-size: 15px;
   }
-  .form-group small { display: block; margin-top: 6px; color: #888; font-size: 12px; }
-  .input-row { display: flex; gap: 10px; }
-  .input-row input { flex: 1; }
 
   .btn-primary, .btn-secondary, .btn-danger, .btn-tiny, .btn-action {
     padding: 12px 24px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
@@ -65,8 +61,30 @@
   .btn-correct { background: #2ed573; color: #0f2f1a; }
   .btn-wrong { background: #ff4757; color: #fff; }
 
+  /* Stor Skanningsknapp */
+  .btn-scan-huge {
+    width: 100%;
+    padding: 24px 20px;
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #e94560, #ff6b81);
+    color: #fff;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    box-shadow: 0 6px 24px rgba(233, 69, 96, 0.4);
+    transition: transform 0.1s, box-shadow 0.2s;
+    margin-bottom: 20px;
+  }
+  .btn-scan-huge:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(233, 69, 96, 0.6); }
+  .btn-scan-huge:active { transform: translateY(0); }
+
   .btn-action {
-    background: #1ed760; color: #0b2210; font-size: 17px; width: 100%; padding: 16px; margin: 10px 0;
+    background: #1ed760; color: #0b2210; font-size: 18px; width: 100%; padding: 16px; margin: 10px 0;
   }
   .btn-action:hover { background: #2bf06f; }
   .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -121,8 +139,6 @@
     pointer-events: none;
     letter-spacing: 1px;
   }
-
-  .host-controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 
   .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
   .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
@@ -225,6 +241,11 @@
   <div id="view-host" class="view">
     <div class="host-layout">
       <div>
+        <!-- Stor Skanningsknapp -->
+        <button class="btn-scan-huge" onclick="openScanner('playlist')">
+          📷 SKANNA KORT / QR-KOD
+        </button>
+
         <div class="card">
           <h2>🎤 Värdkontroll</h2>
           <div class="round-info">
@@ -233,17 +254,12 @@
             <div class="points-badge" id="current-points">5 poäng</div>
           </div>
 
-          <!-- Blindad Spotify-spelare (döljer låtnamn) -->
+          <!-- Blindad Spotify-spelare -->
           <div class="blind-spotify-wrapper">
             <div id="spotify-embed-container">
-              <p style="color:#888; text-align:center; line-height:152px;">Skanna eller ladda ett kort nedan för att starta musiken</p>
+              <p style="color:#888; text-align:center; line-height:152px;">Tryck på "Skanna Kort" ovan för att starta musiken</p>
             </div>
             <div class="blind-spotify-mask">🔒 LÅTNAMN DOLD</div>
-          </div>
-
-          <div class="host-controls">
-            <button class="btn-secondary" onclick="spotifyPlay()">▶️ Spela</button>
-            <button class="btn-secondary" onclick="spotifyPause()">⏸️ Pausa</button>
           </div>
 
           <!-- En enda knapp för att byta låt och uppdatera poäng -->
@@ -262,18 +278,6 @@
             <div id="guesses-list"></div>
             <button class="btn-primary" style="margin-top:12px; width:100%;" onclick="finishRound()">✅ Avsluta runda & nollställ för nästa kort</button>
           </div>
-        </div>
-
-        <div class="card">
-          <h3>📷 Ladda Spelkort (QR eller Nummer)</h3>
-          <div class="form-group">
-            <label>Skanna kortets QR-kod eller ange spellänk/nummer</label>
-            <div class="input-row">
-              <input type="text" id="setup-playlist" placeholder="Klistra in Spotify-länk eller skriv t.ex. #4...">
-              <button class="btn-secondary" onclick="openScanner('playlist')">📷 Skanna</button>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="loadCardFromInput()">📥 Ladda Kort</button>
         </div>
       </div>
 
@@ -304,8 +308,8 @@
       <h2>📱 Anslut till spel</h2>
       <div class="form-group">
         <label>Rumskod</label>
-        <div class="input-row">
-          <input type="text" id="join-code" placeholder="ABCD" maxlength="4" style="text-transform:uppercase;letter-spacing:6px;font-size:22px;text-align:center;">
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="join-code" placeholder="ABCD" maxlength="4" style="text-transform:uppercase;letter-spacing:6px;font-size:22px;text-align:center; flex:1;">
           <button class="btn-secondary" onclick="openScanner('room')">📷 Skanna</button>
         </div>
       </div>
@@ -380,7 +384,6 @@
 
 <script>
 // ==================== GÖMD SVARSDATABAS ====================
-// Fyll i alla dina svar här. Siffran matchar spellistans nummer (#1, #2, #3 osv.)
 const HIDDEN_ANSWER_DATABASE = {
   "1": "Freddie Mercury",
   "2": "Madonna",
@@ -393,13 +396,14 @@ const HIDDEN_ANSWER_DATABASE = {
   "9": "The Beatles",
   "10": "Beyoncé",
   "21": "James Bond"
+  // Fyll på med fler kortnummer här...
 };
 
 const PEER_PREFIX = 'mgquiz2026_';
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 let room = null;
-let myRole = null; // 'host' | 'player'
+let myRole = null;
 let myTeamId = null;
 let currentCode = null;
 let currentView = 'landing';
@@ -415,7 +419,6 @@ function initPeerAsHost(code) {
 
   peer.on('connection', (conn) => {
     conn.on('open', () => {
-      // Skicka säker kopia till spelare utan facit
       conn.send({ type: 'SYNC', state: getPlayerSafeState() });
     });
     conn.on('data', (data) => {
@@ -471,7 +474,6 @@ function getPlayerSafeState() {
   if (!room) return null;
   return {
     ...room,
-    // Dölj svaret för spelare fram tills värden avslöjar det
     answer: room.revealed ? room.answer : ''
   };
 }
@@ -487,44 +489,32 @@ function broadcastState() {
   localStorage.setItem('mg_room_' + room.code, JSON.stringify(room));
 }
 
-// ==================== SPOTIFY ====================
-let spotifyAPI = null, spotifyController = null, loadedUri = null, pendingUri = null;
-
-window.onSpotifyIframeApiReady = (API) => {
-  spotifyAPI = API;
-  if (pendingUri) mountSpotify(pendingUri);
-};
-
-function toSpotifyUri(input) {
+// ==================== SPOTIFY HANTERING ====================
+function parseSpotifyData(input) {
   if (!input) return null;
   const s = input.trim();
-  let m = s.match(/spotify:(playlist|album|track|artist):([A-Za-z0-9]+)/);
-  if (m) return 'spotify:' + m[1] + ':' + m[2];
-  m = s.match(/open\.spotify\.com\/(?:embed\/)?(?:intl-[a-z]+\/)?(playlist|album|track|artist)\/([A-Za-z0-9]+)/);
-  if (m) return 'spotify:' + m[1] + ':' + m[2];
-  return null;
-}
+  let type = 'playlist', id = null;
 
-function mountSpotify(uri) {
-  const box = document.getElementById('spotify-embed-container');
-  if (!uri || !box) return;
-
-  const id = uri.split(':');
-  const embedUrl = `https://open.spotify.com/embed/${id[1]}/${id[2]}?utm_source=generator&theme=0`;
-  box.innerHTML = `<iframe src="${embedUrl}" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
-  loadedUri = uri;
-}
-
-function spotifyPlay() {
-  const iframe = document.querySelector('#spotify-embed-container iframe');
-  if (iframe) iframe.src = iframe.src;
-}
-function spotifyPause() {
-  const box = document.getElementById('spotify-embed-container');
-  if (box && loadedUri) {
-    const id = loadedUri.split(':');
-    box.innerHTML = `<iframe src="https://open.spotify.com/embed/${id[1]}/${id[2]}" width="100%" height="152" frameborder="0"></iframe>`;
+  let m = s.match(/spotify:(playlist|album|track):([A-Za-z0-9]+)/);
+  if (m) { type = m[1]; id = m[2]; }
+  else {
+    let m2 = s.match(/open\.spotify\.com\/(?:embed\/)?(?:intl-[a-z]+\/)?(playlist|album|track)\/([A-Za-z0-9]+)/);
+    if (m2) { type = m2[1]; id = m2[2]; }
   }
+
+  if (!id) return null;
+  return {
+    type,
+    id,
+    webUrl: `https://open.spotify.com/${type}/${id}`,
+    embedUrl: `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
+  };
+}
+
+function mountSpotifyEmbed(embedUrl) {
+  const box = document.getElementById('spotify-embed-container');
+  if (!embedUrl || !box) return;
+  box.innerHTML = `<iframe src="${embedUrl}" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="eager"></iframe>`;
 }
 
 // ==================== QR-SKANNER ====================
@@ -533,7 +523,7 @@ let scanStream = null, scanRAF = null, scanTarget = null;
 async function openScanner(target) {
   scanTarget = target;
   document.getElementById('scan-title').textContent =
-    target === 'playlist' ? '📷 Skanna Spotify-QR' : '📷 Skanna rummets QR';
+    target === 'playlist' ? '📷 Skanna Spelkort / QR' : '📷 Skanna Rummets QR';
   document.getElementById('scan-status').textContent = 'Startar kameran...';
   document.getElementById('scanner-modal').classList.remove('hidden');
 
@@ -577,11 +567,10 @@ function closeScanner() {
   document.getElementById('scanner-modal').classList.add('hidden');
 }
 
-function handleScan(text) {
+async function handleScan(text) {
   if (scanTarget === 'playlist') {
     closeScanner();
-    document.getElementById('setup-playlist').value = text;
-    loadCardFromInput();
+    await processScannedCard(text);
   } else {
     let code = null;
     const m = text.match(/[?&]room=([A-Z0-9]{4})/i);
@@ -595,6 +584,57 @@ function handleScan(text) {
     document.getElementById('join-code').value = code;
     if (document.getElementById('join-team').value.trim()) joinRoom();
   }
+}
+
+// ==================== KORTHANTERING ====================
+async function processScannedCard(rawInput) {
+  let rawNum = null;
+  const parsed = parseSpotifyData(rawInput);
+
+  if (/^#?\d+$/.test(rawInput.trim())) {
+    rawNum = rawInput.replace(/[^0-9]/g, '');
+  } else if (parsed && parsed.webUrl) {
+    try {
+      const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(parsed.webUrl)}`);
+      const data = await res.json();
+      const hashMatch = (data.title || '').match(/#\s*(\d+)/);
+      if (hashMatch) {
+        rawNum = hashMatch[1];
+      } else {
+        const anyNumMatch = (data.title || '').match(/\d+/);
+        if (anyNumMatch) rawNum = anyNumMatch[0];
+      }
+    } catch (e) {
+      console.warn("Kunde inte hämta oEmbed från Spotify:", e);
+    }
+  }
+
+  if (!rawNum) {
+    alert('Kunde inte läsa ut något kortnummer (#nummer) från koden.');
+    return;
+  }
+
+  const cardNum = parseInt(rawNum, 10).toString();
+  const answer = HIDDEN_ANSWER_DATABASE[cardNum] || HIDDEN_ANSWER_DATABASE[rawNum];
+
+  if (!answer) {
+    alert(`Kort #${cardNum} hittades inte i den gömda svarsdatabasen!\nKontrollera HIDDEN_ANSWER_DATABASE i filen.`);
+    return;
+  }
+
+  room.cardNum = cardNum;
+  room.answer = answer;
+  room.round = 1;
+  room.revealed = false;
+  room.guesses = {};
+
+  if (parsed && parsed.embedUrl) {
+    room.embedUrl = parsed.embedUrl;
+    mountSpotifyEmbed(parsed.embedUrl);
+  }
+
+  broadcastState();
+  render();
 }
 
 // ==================== SPELHANTERING ====================
@@ -614,8 +654,7 @@ function createRoomInstant() {
     code,
     createdAt: Date.now(),
     cardNum: null,
-    playlistUri: null,
-    playlistUrl: '',
+    embedUrl: '',
     answer: '',
     round: 1,
     revealed: false,
@@ -629,56 +668,6 @@ function createRoomInstant() {
 
   switchView('host');
   renderQR();
-  render();
-}
-
-async function loadCardFromInput() {
-  const input = document.getElementById('setup-playlist').value.trim();
-  if (!input) return;
-
-  let cardNum = null;
-  let uri = toSpotifyUri(input);
-
-  // Om användaren klistrade in/skannade en siffra (t.ex. "#4" eller "4")
-  if (/^#?\d+$/.test(input)) {
-    cardNum = input.replace(/[^0-9]/g, '');
-  } else if (input.includes('open.spotify.com/playlist/')) {
-    // Hämta spellistans namn automatiskt från Spotify
-    try {
-      const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(input)}`);
-      const data = await res.json();
-      const match = (data.title || '').match(/#?(\d+)/);
-      if (match) cardNum = match[1];
-    } catch (e) {
-      console.warn("Kunde inte hämta oEmbed:", e);
-    }
-  }
-
-  if (!cardNum) {
-    alert('Kunde inte läsa ut något nummer (#nummer) från spellistan.');
-    return;
-  }
-
-  const answer = HIDDEN_ANSWER_DATABASE[cardNum];
-  if (!answer) {
-    alert(`Kort #${cardNum} hittades inte i den gömda svarsdatabasen!`);
-    return;
-  }
-
-  room.cardNum = cardNum;
-  room.answer = answer; // Kopplas automatiskt i bakgrunden
-  room.round = 1;
-  room.revealed = false;
-  room.guesses = {};
-
-  if (uri) {
-    room.playlistUri = uri;
-    room.playlistUrl = input;
-    mountSpotify(uri);
-  }
-
-  document.getElementById('setup-playlist').value = '';
-  broadcastState();
   render();
 }
 
@@ -702,7 +691,6 @@ function joinRoom() {
   initPeerAsPlayer(code, name);
 }
 
-// En enda knapp som stegar låt och uppdaterar poäng
 function nextSong() {
   if (room.round < 5) {
     room.round++;
@@ -754,9 +742,10 @@ function finishRound() {
   room.revealed = false;
   room.cardNum = null;
   room.answer = '';
+  room.embedUrl = '';
 
   const box = document.getElementById('spotify-embed-container');
-  if (box) box.innerHTML = '<p style="color:#888; text-align:center; line-height:152px;">Skanna nästa kort för att starta musiken</p>';
+  if (box) box.innerHTML = '<p style="color:#888; text-align:center; line-height:152px;">Tryck på "Skanna Kort" ovan för att starta musiken</p>';
 
   broadcastState();
   render();
@@ -787,7 +776,6 @@ function renderHost() {
   document.getElementById('current-round').textContent = room.round;
   document.getElementById('current-points').textContent = (6 - room.round) + ' poäng';
   
-  // Kontrollknappar
   const btnNext = document.getElementById('btn-next-song');
   const btnReveal = document.getElementById('btn-reveal');
   
@@ -939,6 +927,5 @@ function goJoin() { switchView('join'); }
   }
 })();
 </script>
-
 </body>
 </html>

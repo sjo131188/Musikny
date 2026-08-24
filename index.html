@@ -1,298 +1,342 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Musikgissningsspel</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Musikquiz - Smart Rättning & Timer</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- QR Generator för spelare -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- QR Scanner för Host (Kamera) -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
 
-  .hidden { display: none !important; }
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
 
-  .nav-bar {
-    display: flex; gap: 8px; padding: 12px 20px; background: #1a1a2e; border-bottom: 1px solid #333;
-    position: sticky; top: 0; z-index: 100; align-items: center; flex-wrap: wrap;
-  }
-  .nav-btn {
-    padding: 10px 18px; border: none; border-radius: 8px; background: #252540; color: #aaa;
-    cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
-  }
-  .nav-btn:hover { background: #353560; color: #fff; }
-  .nav-btn.active { background: #e94560; color: #fff; }
-  .nav-room { margin-left: auto; color: #ffd700; font-weight: 700; letter-spacing: 2px; }
+    .nav-bar {
+      display: flex; gap: 8px; padding: 12px 20px; background: #1a1a2e; border-bottom: 1px solid #333;
+      position: sticky; top: 0; z-index: 100; overflow-x: auto;
+    }
+    .nav-btn {
+      padding: 10px 18px; border: none; border-radius: 8px; background: #252540; color: #aaa;
+      cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-btn:hover { background: #353560; color: #fff; }
+    .nav-btn.active { background: #e94560; color: #fff; }
 
-  .view { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
-  .view.active { display: block; }
+    .view { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .view.active { display: block; }
 
-  .card {
-    background: #1a1a2e; border-radius: 16px; padding: 24px; border: 1px solid #2a2a4a;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-bottom: 20px;
-  }
+    .card {
+      background: #1a1a2e; border-radius: 16px; padding: 24px; border: 1px solid #2a2a4a;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-bottom: 20px;
+    }
 
-  h1 { font-size: 34px; color: #fff; margin-bottom: 8px; text-align: center; }
-  h2 { color: #e94560; margin-bottom: 20px; font-size: 24px; }
-  h3 { color: #ffd700; margin-bottom: 16px; font-size: 18px; }
-  h4 { color: #aaa; margin: 12px 0 8px; font-size: 14px; }
-  .tagline { text-align: center; color: #888; margin-bottom: 28px; }
+    h2 { color: #e94560; margin-bottom: 16px; font-size: 24px; }
+    h3 { color: #ffd700; margin-bottom: 14px; font-size: 18px; }
 
-  .form-group { margin-bottom: 20px; }
-  .form-group label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
-  .form-group input, .form-group textarea, .form-group select {
-    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a3a5a;
-    background: #252540; color: #fff; font-size: 15px;
-  }
-  .form-group small { display: block; margin-top: 6px; color: #888; font-size: 12px; }
-  .input-row { display: flex; gap: 10px; }
-  .input-row input { flex: 1; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a3a5a;
+      background: #252540; color: #fff; font-size: 15px;
+    }
+    .form-group small { display: block; margin-top: 6px; color: #888; font-size: 12px; }
 
-  .btn-primary, .btn-secondary, .btn-danger, .btn-tiny {
-    padding: 12px 24px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
-    cursor: pointer; transition: transform 0.1s;
-  }
-  .btn-primary { background: #e94560; color: #fff; }
-  .btn-primary:hover { background: #ff6b81; transform: translateY(-1px); }
-  .btn-secondary { background: #4a4a6a; color: #fff; }
-  .btn-secondary:hover { background: #5a5a7a; }
-  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-danger { background: #ff4757; color: #fff; }
-  .btn-danger:hover { background: #ff6b81; }
-  .btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
-  .btn-correct { background: #2ed573; color: #0f2f1a; }
-  .btn-wrong { background: #ff4757; color: #fff; }
+    .btn-primary, .btn-secondary, .btn-danger, .btn-tiny, .btn-action {
+      padding: 12px 24px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover { background: #ff6b81; }
+    .btn-secondary { background: #4a4a6a; color: #fff; }
+    .btn-secondary:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn-danger { background: #ff4757; color: #fff; }
+    .btn-tiny { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+    .btn-correct { background: #2ed573; color: #0b2f15; }
+    .btn-wrong { background: #ff4757; color: #fff; }
 
-  /* Landing */
-  .landing-wrap { max-width: 760px; margin: 60px auto 0; }
-  .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 700px) { .choice-grid { grid-template-columns: 1fr; } }
-  .choice {
-    background: #1a1a2e; border: 2px solid #2a2a4a; border-radius: 20px; padding: 36px 24px;
-    text-align: center; cursor: pointer; transition: all 0.2s;
-  }
-  .choice:hover { border-color: #e94560; transform: translateY(-3px); }
-  .choice .emoji { font-size: 52px; display: block; margin-bottom: 14px; }
-  .choice .title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-  .choice .desc { color: #888; font-size: 14px; }
+    .btn-action { background: #1ed760; color: #0b2210; font-size: 18px; width: 100%; padding: 16px; margin: 10px 0; }
+    .btn-action:hover { background: #2bf06f; }
+    .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
 
-  .host-layout { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 20px; align-items: start; }
-  @media (max-width: 900px) { .host-layout { grid-template-columns: 1fr; } }
+    .host-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .host-layout { grid-template-columns: 1fr; } }
 
-  .round-info { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-  .round-badge, .points-badge { padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 14px; }
-  .round-badge { background: #ffd700; color: #1a1a2e; }
-  .points-badge { background: #2ed573; color: #0f2f1a; }
+    .round-info { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .round-badge, .points-badge, .room-badge, .timer-badge {
+      padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 14px;
+    }
+    .room-badge { background: #3742fa; color: #fff; }
+    .round-badge { background: #ffd700; color: #1a1a2e; }
+    .points-badge { background: #2ed573; color: #0f2f1a; }
+    .timer-badge { background: #ff4757; color: #fff; font-variant-numeric: tabular-nums; }
+    .timer-badge.warning { background: #ffa502; color: #1a1a2e; }
+    .timer-badge.safe { background: #2ed573; color: #0f2f1a; }
 
-  .spotify-box { margin: 16px 0; }
-  .placeholder-text { color: #888; text-align: center; padding: 30px; background: #252540; border-radius: 12px; }
-  .hint { color: #888; font-size: 13px; text-align: center; margin-top: 8px; }
+    /* Timer Progress Bar */
+    .timer-bar-container {
+      width: 100%; height: 8px; background: #252540; border-radius: 4px; overflow: hidden; margin: 10px 0 16px;
+    }
+    .timer-bar-fill {
+      height: 100%; width: 100%; background: #2ed573; transition: width 0.3s linear, background-color 0.3s;
+    }
 
-  .host-controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    /* Blindad Spotify Spelare */
+    .blind-player-wrapper {
+      position: relative; background: #000; border-radius: 12px; overflow: hidden;
+      margin: 16px 0; border: 2px solid #2a2a4a; height: 152px;
+    }
+    .blind-player-wrapper iframe { width: 100%; height: 152px; border: none; }
+    .blind-mask {
+      position: absolute; top: 0; left: 160px; right: 0; bottom: 0;
+      background: #121212; display: flex; align-items: center; justify-content: center;
+      color: #ffd700; font-weight: 700; font-size: 15px; border-left: 2px solid #2a2a4a;
+      pointer-events: none;
+    }
 
-  .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
-  .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
+    .scanner-box {
+      background: #131326; border: 2px dashed #4a4a6a; border-radius: 12px;
+      padding: 16px; margin-bottom: 16px; text-align: center;
+    }
+    #qr-reader { width: 100%; max-width: 380px; margin: 10px auto; border-radius: 10px; overflow: hidden; }
 
-  .guess-item {
-    display: flex; align-items: center; gap: 10px; padding: 10px; background: #1a1a2e;
-    border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap;
-  }
-  .guess-round { color: #888; font-size: 12px; }
+    .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
+    .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
 
-  .room-code {
-    text-align: center; font-size: 40px; font-weight: 900; letter-spacing: 8px;
-    color: #ffd700; background: #252540; border-radius: 12px; padding: 12px; margin-bottom: 12px;
-  }
-  #qr-code { display: flex; justify-content: center; margin: 16px 0; background: #fff; padding: 12px; border-radius: 12px; width: fit-content; margin-left: auto; margin-right: auto; }
-  .join-url { text-align: center; color: #aaa; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
+    .guess-item {
+      display: flex; align-items: center; justify-content: space-between; padding: 12px;
+      background: #1a1a2e; border-radius: 8px; margin-bottom: 8px; gap: 10px;
+    }
 
-  .teams-status ul { list-style: none; }
-  .teams-status li { padding: 8px 0; border-bottom: 1px solid #2a2a4a; color: #ccc; display: flex; justify-content: space-between; }
+    #qr-code { display: flex; justify-content: center; margin: 16px 0; }
+    #qr-code img, #qr-code canvas { border-radius: 12px; }
+    .join-url { text-align: center; color: #888; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
 
-  .score-row {
-    display: flex; align-items: center; gap: 12px; padding: 10px; background: #252540;
-    border-radius: 8px; margin-bottom: 6px;
-  }
-  .score-row.big { padding: 14px; font-size: 18px; }
-  .score-row.me { border: 1px solid #e94560; }
-  .score-row .rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-    background: #e94560; color: #fff; border-radius: 50%; font-weight: 700; font-size: 13px; flex-shrink: 0; }
-  .score-row.big .rank { width: 36px; height: 36px; font-size: 16px; }
-  .score-row .team { flex: 1; color: #fff; }
-  .score-row .score { font-weight: 700; color: #ffd700; }
+    .score-row {
+      display: flex; align-items: center; gap: 12px; padding: 10px; background: #252540;
+      border-radius: 8px; margin-bottom: 6px;
+    }
+    .score-row .rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: #e94560; color: #fff; border-radius: 50%; font-weight: 700; font-size: 13px; }
+    .score-row .team { flex: 1; color: #fff; }
+    .score-row .score { font-weight: 700; color: #ffd700; }
 
-  .player-container { max-width: 480px; margin: 0 auto; }
-  .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .team-label { background: #e94560; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 600; }
-  .my-score { font-size: 20px; font-weight: 800; color: #ffd700; }
+    /* Spelarvy */
+    .player-container { max-width: 480px; margin: 0 auto; }
+    .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .team-label { background: #e94560; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 600; }
+    .my-score { font-size: 20px; font-weight: 800; color: #ffd700; }
 
-  .song-indicator { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
-  .song-dot {
-    width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    background: #252540; color: #888; font-weight: 700; border: 2px solid #3a3a5a; transition: all 0.3s;
-  }
-  .song-dot.active { background: #e94560; color: #fff; border-color: #ff6b81; transform: scale(1.1); box-shadow: 0 0 16px rgba(233,69,96,0.4); }
-  .song-dot.played { background: #2ed573; color: #0f2f1a; border-color: #2ed573; }
+    .song-indicator { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+    .song-dot {
+      width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      background: #252540; color: #888; font-weight: 700; border: 2px solid #3a3a5a; transition: all 0.3s;
+    }
+    .song-dot.active { background: #e94560; color: #fff; border-color: #ff6b81; transform: scale(1.1); box-shadow: 0 0 16px rgba(233,69,96,0.4); }
+    .song-dot.played { background: #2ed573; color: #0f2f1a; border-color: #2ed573; }
 
-  .points-display { text-align: center; color: #ccc; margin-bottom: 20px; font-size: 16px; }
-  .points-display strong { color: #ffd700; font-size: 24px; }
+    .points-display { text-align: center; color: #ccc; margin-bottom: 12px; font-size: 16px; }
+    .points-display strong { color: #ffd700; font-size: 26px; }
 
-  .guess-section label { display: block; margin-bottom: 8px; color: #ccc; }
-  .guess-section input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #3a3a5a; background: #252540; color: #fff; font-size: 16px; margin-bottom: 12px; }
-  .btn-guess { width: 100%; padding: 16px; font-size: 18px; }
+    .guess-section label { display: block; margin-bottom: 8px; color: #ccc; }
+    .guess-section input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #3a3a5a; background: #252540; color: #fff; font-size: 16px; margin-bottom: 12px; }
+    .btn-guess { width: 100%; padding: 16px; font-size: 18px; }
 
-  .guess-status { padding: 20px; background: #252540; border-radius: 12px; text-align: center; }
-  .status-message { font-size: 18px; font-weight: 600; color: #ffd700; }
+    .time-out-banner {
+      background: #ff4757; color: #fff; padding: 12px; border-radius: 10px; font-weight: bold; text-align: center; margin-bottom: 12px;
+    }
 
-  .history-item { padding: 10px; background: #252540; border-radius: 8px; margin-bottom: 8px; color: #ccc; }
+    .reveal-card {
+      background: #252540; border-radius: 16px; padding: 20px; text-align: center;
+      border: 2px solid #ffd700; margin-top: 15px; animation: popIn 0.3s ease;
+    }
+    .result-badge { display: inline-block; padding: 8px 18px; border-radius: 20px; font-weight: 800; font-size: 18px; margin-top: 10px; }
+    .result-badge.correct { background: #2ed573; color: #0b2f15; }
+    .result-badge.wrong { background: #ff4757; color: #fff; }
 
-  /* Scanner modal */
-  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
-  .modal-inner { background: #1a1a2e; border-radius: 18px; padding: 20px; max-width: 460px; width: 100%; border: 1px solid #2a2a4a; }
-  #scan-video { width: 100%; border-radius: 12px; background: #000; margin: 12px 0; }
-  .scan-status { color: #aaa; font-size: 13px; text-align: center; margin-bottom: 12px; min-height: 18px; }
-  .modal-actions { display: flex; gap: 10px; }
-  .modal-actions button { flex: 1; }
-</style>
+    @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .hidden { display: none !important; }
+  </style>
 </head>
 <body>
 
 <div id="app">
   <!-- NAVIGATION -->
-  <div class="nav-bar hidden" id="nav-bar">
-    <button class="nav-btn" data-view="landing">🏠 Start</button>
-    <button class="nav-btn hidden" data-view="host" id="nav-host">🎤 Värdskärm</button>
-    <button class="nav-btn hidden" data-view="player" id="nav-player">📱 Mitt lag</button>
-    <button class="nav-btn" data-view="scores">🏆 Poängtavla</button>
-    <span class="nav-room hidden" id="nav-room"></span>
+  <div class="nav-bar">
+    <button class="nav-btn active" id="nav-setup" onclick="switchView('setup')">⚙️ Inställningar</button>
+    <button class="nav-btn" id="nav-host" onclick="switchView('host')">🎤 Host-skärm</button>
+    <button class="nav-btn" id="nav-player" onclick="switchView('player')">📱 Lag-telefon</button>
+    <button class="nav-btn" id="nav-scores" onclick="switchView('scores')">🏆 Poängtavla</button>
   </div>
 
-  <!-- LANDING -->
-  <div id="view-landing" class="view active">
-    <div class="landing-wrap">
-      <h1>🎵 Musikgissningsspelet</h1>
-      <p class="tagline">Fem låtar, en hemlig person. Ju tidigare ni gissar rätt, desto mer poäng.</p>
-      <div class="choice-grid">
-        <div class="choice" onclick="createRoomInstant()">
-          <span class="emoji">🎤</span>
-          <div class="title">Hosta ett spel</div>
-          <div class="desc">Skapa rum direkt, få QR-kod för deltagarna och styr spelet.</div>
-        </div>
-        <div class="choice" onclick="goJoin()">
-          <span class="emoji">📱</span>
-          <div class="title">Anslut till spel</div>
-          <div class="desc">Skriv in rumskoden eller skanna värdens QR-kod med mobilen.</div>
-        </div>
+  <!-- SETUP VIEW -->
+  <div id="view-setup" class="view active">
+    <div class="card">
+      <h2>🔥 Firebase Konfiguration</h2>
+      <div class="form-group">
+        <label>Firebase Database URL</label>
+        <input type="text" id="fb-db-url" placeholder="https://ditt-projekt-default-rtdb.firebaseio.com">
       </div>
+      <div class="form-group">
+        <label>Firebase API Key</label>
+        <input type="text" id="fb-api-key" placeholder="AIzaSy...">
+      </div>
+      <div class="form-group">
+        <label>Firebase Project ID</label>
+        <input type="text" id="fb-project-id" placeholder="ditt-projekt-id">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⏱️ Spelinställningar & Svarsfacit</h2>
+      <div class="form-group">
+        <label>Timer per låt (i sekunder)</label>
+        <input type="number" id="timer-duration" value="30" min="5" max="180">
+      </div>
+      <div class="form-group">
+        <label>Svarsfacit (Nummer | Svar)</label>
+        <textarea id="answer-facit" rows="8">#1 | Freddie Mercury / Queen
+#2 | Madonna
+#3 | Michael Jackson
+#4 | ABBA
+#5 | Elton John
+#6 | Avicii / Tim Bergling
+#7 | Lady Gaga</textarea>
+        <small>💡 Tips: Du kan ange flera godkända svar med snedstreck (t.ex. <code>Avicii / Tim Bergling</code>). Fuzzy matching tolererar automatiskt små stavfel och feltryck.</small>
+      </div>
+      <div class="form-group">
+        <label>Lag (ett per rad)</label>
+        <textarea id="team-names" rows="4">Team Rockstars&#10;Team Vinyl&#10;Team Disco&#10;Team Basgång</textarea>
+      </div>
+      <button class="btn-primary" onclick="initAndSaveGame()">🚀 Starta Spelomgång</button>
     </div>
   </div>
 
-  <!-- HOST GAME -->
+  <!-- HOST VIEW -->
   <div id="view-host" class="view">
     <div class="host-layout">
-      <div>
-        <div class="card">
-          <h2>🎤 Värdkontroll</h2>
-          <div class="round-info">
-            <div class="round-badge">Låt <span id="current-round">1</span> / 5</div>
-            <div class="points-badge" id="current-points">5 poäng</div>
+      <!-- Vänster: Kontroll & Skanning -->
+      <div class="host-left">
+        
+        <!-- Sektion för att skanna/ladda nytt fysiskt kort -->
+        <div class="card scanner-box" id="card-scanner-section">
+          <h3>📷 Skanna Fysiskt Kort</h3>
+          <p style="color:#aaa; font-size:14px; margin-bottom:10px;">Rikta kameran mot QR-koden på kortet, eller klistra in Spotify-länken:</p>
+          
+          <div style="display:flex; gap:8px; justify-content:center; margin-bottom:10px;">
+            <button class="btn-secondary" id="btn-toggle-cam" onclick="toggleCameraScanner()">🎥 Starta/Stoppa Kamera</button>
           </div>
+          <div id="qr-reader" class="hidden"></div>
 
-          <div class="spotify-box">
-            <div id="spotify-embed-container">
-              <p class="placeholder-text">Ingen spellista vald ännu. Klistra in länk eller skanna nedan.</p>
-            </div>
-            <div class="host-controls" style="margin-top:12px;">
-              <button class="btn-secondary" onclick="spotifyPlay()">▶️ Spela</button>
-              <button class="btn-secondary" onclick="spotifyPause()">⏸️ Pausa</button>
-              <button class="btn-secondary" onclick="openScanner('playlist')">📷 Skanna spellista</button>
-            </div>
-          </div>
-
-          <div class="host-controls">
-            <button class="btn-secondary" onclick="prevSong()" id="btn-prev">⏮️ Föregående låt</button>
-            <button class="btn-primary" onclick="nextSong()" id="btn-next">Nästa låt ⏭️</button>
-            <button class="btn-danger" onclick="revealAnswer()">🔓 Avslöja svaret</button>
-          </div>
-
-          <div id="answer-reveal" class="answer-box hidden">
-            <h3>Svaret är:</h3>
-            <div class="answer-text" id="revealed-answer">???</div>
-            <h4>Granska gissningar:</h4>
-            <div id="guesses-list"></div>
-            <button class="btn-primary" style="margin-top:12px;" onclick="finishRound()">✅ Avsluta runda & spara poäng</button>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" id="manual-scan-input" placeholder="Klistra in länk eller skriv t.ex. #4..." style="padding:10px; border-radius:8px; border:1px solid #3a3a5a; background:#252540; color:#fff; flex:1;">
+            <button class="btn-primary" onclick="handleManualLoad()">Ladda Kort</button>
           </div>
         </div>
 
-        <div class="card">
-          <h3>⚙️ Spellista & Rätt Svar för rundan</h3>
-          <div class="form-group">
-            <label>Spotify-länk (spellista, album eller låt)</label>
-            <div class="input-row">
-              <input type="text" id="setup-playlist" placeholder="https://open.spotify.com/playlist/...">
-              <button class="btn-secondary" onclick="openScanner('playlist')">📷 Skanna</button>
+        <!-- Aktivt Spelkort -->
+        <div class="card" id="active-game-section">
+          <h2>🎤 Aktivt Kort: <span id="current-card-badge" style="color:#ffd700;">Inget kort laddat</span></h2>
+          
+          <div class="round-info">
+            <div class="room-badge">Rum: <span id="host-game-id">---</span></div>
+            <div class="round-badge">Låt <span id="current-song-num">1</span> / 5</div>
+            <div class="points-badge" id="current-song-pts">5 poäng värd</div>
+            <div class="timer-badge safe" id="host-timer-display">⏱️ 30s</div>
+          </div>
+
+          <!-- Timer Progress Bar -->
+          <div class="timer-bar-container">
+            <div class="timer-bar-fill" id="host-timer-bar"></div>
+          </div>
+          
+          <!-- Blindad Spotify Spelare -->
+          <div class="blind-player-wrapper">
+            <div id="spotify-embed-container">
+              <p style="color:#666; text-align:center; line-height:152px;">Skanna ett kort för att ladda spelaren</p>
             </div>
+            <div class="blind-mask">🔒 LÅTNAMN DOLD</div>
           </div>
-          <div class="form-group">
-            <label>Rätt svar (personen / temat)</label>
-            <input type="text" id="setup-answer" placeholder="t.ex. Freddie Mercury">
+
+          <!-- Timer Kontroller -->
+          <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+            <button class="btn-secondary btn-tiny" onclick="restartTimer()">🔄 Starta om timer</button>
+            <button class="btn-secondary btn-tiny" onclick="addTimerSeconds(10)">➕ Ge +10 sek</button>
           </div>
-          <button class="btn-primary" onclick="updateRoundSettings()">💾 Uppdatera / Ladda runda</button>
+
+          <!-- Stega låt -->
+          <button class="btn-action" id="btn-next-song" onclick="nextSongStep()" disabled>
+            🎵 Spela Nästa Låt (Låt 2 &rarr; 4p)
+          </button>
+
+          <button class="btn-danger" id="btn-reveal-action" style="width:100%; margin-top:6px;" onclick="revealAnswer()" disabled>
+            🔓 Avslöja Svaret
+          </button>
+
+          <!-- Avslöjande Box -->
+          <div id="answer-reveal" class="answer-box hidden">
+            <h3>Rätt person är:</h3>
+            <div class="answer-text" id="revealed-answer">---</div>
+            
+            <h4>Inkomna gissningar (Automatiskt rättade med tolerans):</h4>
+            <div id="guesses-list"></div>
+
+            <button class="btn-action" style="background:#ffd700; margin-top:16px;" onclick="prepareNextCard()">
+              📷 Skanna Nästa Kort
+            </button>
+          </div>
         </div>
       </div>
 
-      <div>
+      <!-- Höger: Lag & Poäng -->
+      <div class="host-right">
         <div class="card">
-          <h3>📱 Anslut med mobilen</h3>
-          <p class="hint" style="text-align:left; margin-bottom:10px;">Låt deltagarna skanna koden eller gå in på länken:</p>
-          <div class="room-code" id="room-code-display">----</div>
+          <h3>📱 Skanna för att gå med</h3>
           <div id="qr-code"></div>
           <p class="join-url" id="join-url"></p>
           <div class="teams-status">
-            <h4>Anslutna lag:</h4>
-            <ul id="connected-teams"></ul>
+            <h4>Lagens gissningsstatus:</h4>
+            <ul id="connected-teams" style="list-style:none; padding-top:8px;"></ul>
           </div>
         </div>
-
+        
         <div class="card">
-          <h3>🏆 Live-poäng</h3>
+          <h3>🏆 Live Poängställning</h3>
           <div id="mini-scores"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- JOIN -->
-  <div id="view-join" class="view">
-    <div class="card" style="max-width:460px;margin:0 auto;">
-      <h2>📱 Anslut till spel</h2>
-      <div class="form-group">
-        <label>Rumskod</label>
-        <div class="input-row">
-          <input type="text" id="join-code" placeholder="ABCD" maxlength="4" style="text-transform:uppercase;letter-spacing:6px;font-size:22px;text-align:center;">
-          <button class="btn-secondary" onclick="openScanner('room')">📷 Skanna</button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Lagnamn</label>
-        <input type="text" id="join-team" placeholder="t.ex. Popstjärnorna">
-      </div>
-      <button class="btn-primary" style="width:100%;" id="btn-join-action" onclick="joinRoom()">Anslut till rummet</button>
-      <p class="hint" id="join-error" style="color:#ff6b81; margin-top: 10px;"></p>
-    </div>
-  </div>
-
-  <!-- PLAYER -->
+  <!-- PLAYER VIEW -->
   <div id="view-player" class="view">
     <div class="player-container">
-      <div class="card">
+      <div class="card" id="player-login">
+        <h2>🎮 Välj ditt lag</h2>
+        <div class="form-group" id="room-input-group">
+          <label>Rums-ID</label>
+          <input type="text" id="player-room-code" placeholder="T.ex. ABC123">
+        </div>
+        <div class="form-group">
+          <label>Lag</label>
+          <select id="player-team-select">
+            <option value="">-- Välj ditt lag --</option>
+          </select>
+        </div>
+        <button class="btn-primary" style="width: 100%;" onclick="joinGame()">Gå med i spelet</button>
+      </div>
+
+      <div class="card hidden" id="player-game">
         <div class="player-header">
           <span class="team-label" id="my-team">Lag</span>
-          <span class="my-score" id="my-score">0 p</span>
+          <span class="my-score" id="my-score">0 pts</span>
         </div>
-
+        
         <div class="song-indicator">
           <div class="song-dot active" id="dot-1">1</div>
           <div class="song-dot" id="dot-2">2</div>
@@ -300,555 +344,724 @@
           <div class="song-dot" id="dot-4">4</div>
           <div class="song-dot" id="dot-5">5</div>
         </div>
-        <div class="points-display">Värde just nu: <strong id="song-value">5</strong> p</div>
 
+        <div class="points-display">
+          Kort <span id="player-card-num">#?</span> — Låt <span id="player-song-num">1</span> (<strong id="song-value">5</strong> poäng)
+        </div>
+
+        <!-- Timer på mobilen -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:13px; color:#aaa;">Tid kvar att gissa:</span>
+          <span class="timer-badge safe" id="player-timer-display">⏱️ 30s</span>
+        </div>
+        <div class="timer-bar-container">
+          <div class="timer-bar-fill" id="player-timer-bar"></div>
+        </div>
+
+        <!-- Timeout Banner -->
+        <div class="time-out-banner hidden" id="player-timeout-msg">
+          ⏰ Tiden är ute för låt <span id="timeout-song-num">1</span>! Vänta på nästa låt.
+        </div>
+
+        <!-- Gissningsformulär -->
         <div class="guess-section" id="guess-section">
-          <label>Vem är personen?</label>
-          <input type="text" id="player-guess" placeholder="Skriv er gissning...">
-          <button class="btn-primary btn-guess" onclick="submitGuess()">Skicka gissning</button>
+          <label>Vem är den hemliga personen/bandet?</label>
+          <input type="text" id="player-guess" placeholder="Skriv lagets gissning här...">
+          <button class="btn-primary btn-guess" id="btn-player-submit" onclick="submitGuess()">Skicka in gissning</button>
         </div>
 
+        <!-- Låst gissning -->
         <div class="guess-status hidden" id="guess-status">
-          <div class="status-message" id="status-msg"></div>
+          <div style="font-size: 18px; color: #ffd700; text-align:center;">
+            🔒 Gissning låst: <br><strong id="locked-guess-text">""</strong>
+            <p style="color:#aaa; font-size:13px; margin-top:8px;">Väntar på att hosten avslöjar svaret...</p>
+          </div>
         </div>
-      </div>
 
-      <div class="card">
-        <h3>🏆 Ställning</h3>
-        <div id="player-scores"></div>
+        <!-- Svar & Resultat -->
+        <div class="reveal-card hidden" id="player-reveal-card">
+          <div style="font-size: 14px; color: #aaa;">Rätt svar är:</div>
+          <div style="font-size: 24px; font-weight: 800; color: #ffd700; margin: 6px 0;" id="player-revealed-answer">---</div>
+          <div id="player-team-outcome"></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- SCOREBOARD -->
+  <!-- SCOREBOARD VIEW -->
   <div id="view-scores" class="view">
-    <div class="card" style="max-width:700px;margin:0 auto;">
+    <div class="card" style="max-width: 700px; margin: 0 auto;">
       <h2>🏆 Poängtavla</h2>
       <div id="full-scoreboard"></div>
-      <div id="round-history"></div>
-    </div>
-  </div>
-</div>
-
-<!-- SCANNER MODAL -->
-<div class="modal hidden" id="scanner-modal">
-  <div class="modal-inner">
-    <h3 id="scan-title">Skanna QR-kod</h3>
-    <video id="scan-video" playsinline muted></video>
-    <p class="scan-status" id="scan-status"></p>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeScanner()">Avbryt</button>
     </div>
   </div>
 </div>
 
 <script>
-const PEER_PREFIX = 'mgquiz2026_';
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// ==================== FUZZY MATCHING (LEVENSHTEIN) ====================
+function levenshteinDistance(s1, s2) {
+  const a = s1 || '';
+  const b = s2 || '';
+  const matrix = [];
 
-let room = null;
-let myRole = null; // 'host' | 'player'
-let myTeamId = null;
-let currentCode = null;
-let currentView = 'landing';
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
 
-// P2P Nätverk
-let peer = null;
-let hostConn = null;
-let playerConns = {};
-
-function initPeerAsHost(code) {
-  if (peer) peer.destroy();
-  peer = new Peer(PEER_PREFIX + code);
-
-  peer.on('open', (id) => {
-    console.log('Host redo med ID:', id);
-  });
-
-  peer.on('connection', (conn) => {
-    conn.on('open', () => {
-      conn.send({ type: 'SYNC', state: room });
-    });
-    conn.on('data', (data) => {
-      if (data.type === 'JOIN') {
-        playerConns[data.teamId] = conn;
-        room.teams[data.teamId] = { name: data.name, score: (room.teams[data.teamId]?.score) || 0 };
-        broadcastState();
-        render();
-      } else if (data.type === 'GUESS') {
-        room.guesses[data.teamId] = { guess: data.guess, round: room.round, scored: false, points: 0 };
-        broadcastState();
-        render();
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // ersättning
+          matrix[i][j - 1] + 1,     // insättning
+          matrix[i - 1][j] + 1      // borttagning
+        );
       }
-    });
-    conn.on('close', () => {
-      render();
-    });
-  });
-}
-
-function initPeerAsPlayer(code, name) {
-  if (peer) peer.destroy();
-  peer = new Peer();
-
-  peer.on('open', () => {
-    hostConn = peer.connect(PEER_PREFIX + code, { reliable: true });
-
-    hostConn.on('open', () => {
-      hostConn.send({ type: 'JOIN', teamId: myTeamId, name });
-      document.getElementById('join-error').textContent = '';
-      switchView('player');
-    });
-
-    hostConn.on('data', (data) => {
-      if (data.type === 'SYNC') {
-        room = data.state;
-        render();
-      }
-    });
-
-    hostConn.on('close', () => {
-      document.getElementById('join-error').textContent = 'Anslutningen till värden bröts.';
-    });
-  });
-
-  peer.on('error', (err) => {
-    document.getElementById('join-error').textContent = 'Kunde inte hitta rummet (' + code + '). Kontrollera koden.';
-    document.getElementById('btn-join-action').disabled = false;
-  });
-}
-
-function broadcastState() {
-  room.updatedAt = Date.now();
-  Object.values(playerConns).forEach(conn => {
-    if (conn && conn.open) {
-      conn.send({ type: 'SYNC', state: room });
     }
-  });
-  localStorage.setItem('mg_room_' + room.code, JSON.stringify(room));
+  }
+  return matrix[b.length][a.length];
 }
 
-// ==================== SPOTIFY ====================
-let spotifyAPI = null, spotifyController = null, loadedUri = null, pendingUri = null;
+function normalizeAnswerText(text) {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Ta bort accenter (é -> e, å/ä -> a, ö -> o etc.)
+    .replace(/[^a-z0-9\s]/g, " ")     // Ta bort specialtecken och skiljetecken
+    .replace(/\s+/g, " ")            // Ersätt multipla mellanslag med ett enda
+    .trim();
+}
 
-window.onSpotifyIframeApiReady = (API) => {
-  spotifyAPI = API;
-  if (pendingUri) mountSpotify(pendingUri);
+function isFuzzyMatch(guess, target) {
+  const normGuess = normalizeAnswerText(guess);
+  if (!normGuess || !target) return false;
+
+  // Stöd för multipla godkända alternativ separerade med '/' eller ','
+  const targetVariants = target.split(/[\/,]/).map(t => normalizeAnswerText(t)).filter(Boolean);
+
+  for (const variant of targetVariants) {
+    if (normGuess === variant) return true;
+
+    // Kontrollera ordagrann matchning om en sträng innehåller den andra
+    if (variant.length > 5 && normGuess.includes(variant)) return true;
+
+    const dist = levenshteinDistance(normGuess, variant);
+    const maxLen = Math.max(normGuess.length, variant.length);
+    const similarity = 1 - (dist / maxLen);
+
+    // Toleransregler baserade på ordlängd:
+    // Kort (<= 7 tecken): Max 1 stavfel
+    // Medel (8-12 tecken): Max 2 stavfel (t.ex. "Frede Mercury")
+    // Lång (> 12 tecken): Max 3 stavfel eller >= 82% likhet
+    if (maxLen <= 7 && dist <= 1) return true;
+    if (maxLen > 7 && maxLen <= 12 && dist <= 2) return true;
+    if (maxLen > 12 && (dist <= 3 || similarity >= 0.82)) return true;
+    if (similarity >= 0.85) return true;
+  }
+
+  return false;
+}
+
+// ==================== STATE ====================
+let db = null;
+let activeGameId = null;
+let isHost = false;
+let html5QrScanner = null;
+let timerInterval = null;
+
+let localFacit = {};
+
+let gameState = {
+  currentCard: { number: null, playlistUrl: '' },
+  currentSongStep: 1,
+  revealed: false,
+  revealedAnswer: '',
+  timerDuration: 30,
+  timerEndsAt: 0,
+  timerActive: false,
+  teams: [],
+  scores: {},
+  guesses: {}
 };
 
-function toSpotifyUri(input) {
-  if (!input) return null;
-  const s = input.trim();
-  let m = s.match(/spotify:(playlist|album|track|artist):([A-Za-z0-9]+)/);
-  if (m) return 'spotify:' + m[1] + ':' + m[2];
-  m = s.match(/open\.spotify\.com\/(?:embed\/)?(?:intl-[a-z]+\/)?(playlist|album|track|artist)\/([A-Za-z0-9]+)/);
-  if (m) return 'spotify:' + m[1] + ':' + m[2];
-  return null;
+// ==================== NAVIGERING ====================
+function switchView(viewName) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const targetView = document.getElementById('view-' + viewName);
+  const targetNav = document.getElementById('nav-' + viewName);
+
+  if (targetView) targetView.classList.add('active');
+  if (targetNav) targetNav.classList.add('active');
+
+  if (viewName === 'scores') updateScoreboards();
 }
 
-function mountSpotify(uri) {
-  const box = document.getElementById('spotify-embed-container');
-  if (!uri || !box) return;
-  if (loadedUri === uri && spotifyController) return;
+// ==================== FIREBASE INIT ====================
+function initFirebase() {
+  const dbUrl = document.getElementById('fb-db-url').value.trim();
+  const apiKey = document.getElementById('fb-api-key').value.trim();
+  const projectId = document.getElementById('fb-project-id').value.trim();
 
-  if (!spotifyAPI) {
-    pendingUri = uri;
-    const id = uri.split(':');
-    box.innerHTML = '<iframe src="https://open.spotify.com/embed/' + id[1] + '/' + id[2] +
-      '" width="100%" height="280" frameborder="0" allow="encrypted-media; autoplay"></iframe>';
-    loadedUri = uri;
+  if (!dbUrl || !apiKey || !projectId) return false;
+
+  localStorage.setItem('music_fb_config', JSON.stringify({ dbUrl, apiKey, projectId }));
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  }
+  db = firebase.database();
+  return true;
+}
+
+function loadSavedFirebaseConfig() {
+  const saved = localStorage.getItem('music_fb_config');
+  if (saved) {
+    const cfg = JSON.parse(saved);
+    document.getElementById('fb-db-url').value = cfg.dbUrl || '';
+    document.getElementById('fb-api-key').value = cfg.apiKey || '';
+    document.getElementById('fb-project-id').value = cfg.projectId || '';
+  }
+}
+
+// ==================== HOST LOGIK ====================
+function initAndSaveGame() {
+  if (!initFirebase()) {
+    alert('Fyll i Firebase Databas-URL, API Key och Project ID först.');
     return;
   }
 
-  if (spotifyController) {
-    spotifyController.loadUri(uri);
-    loadedUri = uri;
-    setTimeout(() => { try { spotifyController.play(); } catch (e) {} }, 600);
+  const facitRaw = document.getElementById('answer-facit').value.trim();
+  const teamsRaw = document.getElementById('team-names').value.trim();
+  const duration = parseInt(document.getElementById('timer-duration').value, 10) || 30;
+
+  if (!facitRaw || !teamsRaw) {
+    alert('Fyll i svarsfacit och lag.');
     return;
   }
 
-  box.innerHTML = '<div id="spotify-el"></div>';
-  spotifyAPI.createController(
-    document.getElementById('spotify-el'),
-    { uri, width: '100%', height: 280 },
-    (ctrl) => {
-      spotifyController = ctrl;
-      loadedUri = uri;
-      setTimeout(() => { try { ctrl.play(); } catch (e) {} }, 600);
+  localFacit = {};
+  facitRaw.split('\n').forEach(line => {
+    const parts = line.split('|');
+    if (parts.length >= 2) {
+      const num = parts[0].replace(/[^0-9]/g, '').trim();
+      const ans = parts[1].trim();
+      if (num && ans) localFacit[num] = ans;
     }
-  );
-}
+  });
 
-function spotifyPlay() { try { spotifyController && spotifyController.play(); } catch (e) {} }
-function spotifyPause() { try { spotifyController && spotifyController.pause(); } catch (e) {} }
+  const teams = teamsRaw.split('\n').map(t => t.trim()).filter(t => t);
+  const scores = {};
+  teams.forEach(t => scores[t] = 0);
 
-// ==================== QR-SKANNER ====================
-let scanStream = null, scanRAF = null, scanTarget = null;
+  activeGameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+  isHost = true;
 
-async function openScanner(target) {
-  scanTarget = target;
-  document.getElementById('scan-title').textContent =
-    target === 'playlist' ? '📷 Skanna Spotify-QR' : '📷 Skanna rummets QR';
-  document.getElementById('scan-status').textContent = 'Startar kameran...';
-  document.getElementById('scanner-modal').classList.remove('hidden');
-
-  try {
-    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-  } catch (e) {
-    document.getElementById('scan-status').textContent = 'Kameran kunde inte startas. Tillåt kameraåtkomst i webbläsaren.';
-    return;
-  }
-
-  const video = document.getElementById('scan-video');
-  video.srcObject = scanStream;
-  await video.play();
-  document.getElementById('scan-status').textContent = 'Rikta kameran mot QR-koden...';
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-  const tick = () => {
-    if (!scanStream) return;
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const res = jsQR(img.data, img.width, img.height);
-      if (res && res.data) {
-        handleScan(res.data);
-        return;
-      }
-    }
-    scanRAF = requestAnimationFrame(tick);
-  };
-  scanRAF = requestAnimationFrame(tick);
-}
-
-function closeScanner() {
-  if (scanRAF) cancelAnimationFrame(scanRAF);
-  scanRAF = null;
-  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
-  document.getElementById('scanner-modal').classList.add('hidden');
-}
-
-function handleScan(text) {
-  if (scanTarget === 'playlist') {
-    const uri = toSpotifyUri(text);
-    if (!uri) {
-      document.getElementById('scan-status').textContent = 'Ingen giltig Spotify-länk hittades. Försök igen.';
-      scanRAF = requestAnimationFrame(tick);
-      return;
-    }
-    closeScanner();
-    const url = 'https://open.spotify.com/' + uri.split(':')[1] + '/' + uri.split(':')[2];
-    document.getElementById('setup-playlist').value = url;
-    updateRoundSettings();
-  } else {
-    let code = null;
-    const m = text.match(/[?&]room=([A-Z0-9]{4})/i);
-    if (m) code = m[1].toUpperCase();
-    else if (/^[A-Z0-9]{4}$/i.test(text.trim())) code = text.trim().toUpperCase();
-    if (!code) {
-      document.getElementById('scan-status').textContent = 'Kunde inte läsa rumskod.';
-      return;
-    }
-    closeScanner();
-    document.getElementById('join-code').value = code;
-    if (document.getElementById('join-team').value.trim()) joinRoom();
-  }
-}
-
-// ==================== SPELHANTERING ====================
-function randCode() {
-  let s = '';
-  for (let i = 0; i < 4; i++) s += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-  return s;
-}
-
-function joinUrlFor(code) {
-  return location.origin + location.pathname + '?room=' + code;
-}
-
-function createRoomInstant() {
-  const code = randCode();
-  room = {
-    code,
-    createdAt: Date.now(),
-    playlistUri: null,
-    playlistUrl: '',
-    answer: '',
-    round: 1,
+  const initialPayload = {
+    facit: localFacit,
+    currentCard: { number: null, playlistUrl: '' },
+    currentSongStep: 1,
     revealed: false,
-    teams: {},
-    guesses: {},
-    history: []
+    revealedAnswer: '',
+    timerDuration: duration,
+    timerEndsAt: 0,
+    timerActive: false,
+    teams: teams,
+    scores: scores,
+    guesses: {}
   };
-  currentCode = code;
-  myRole = 'host';
-  initPeerAsHost(code);
 
-  switchView('host');
-  renderQR();
-  render();
-}
-
-function updateRoundSettings() {
-  const url = document.getElementById('setup-playlist').value.trim();
-  const answer = document.getElementById('setup-answer').value.trim();
-  const uri = toSpotifyUri(url);
-
-  room.answer = answer;
-  if (uri) {
-    room.playlistUri = uri;
-    room.playlistUrl = url;
-    mountSpotify(uri);
-  }
-  broadcastState();
-  render();
-}
-
-function joinRoom() {
-  const code = document.getElementById('join-code').value.trim().toUpperCase();
-  const name = document.getElementById('join-team').value.trim();
-  const err = document.getElementById('join-error');
-  err.textContent = '';
-
-  if (code.length !== 4) { err.textContent = 'Rumskoden ska vara 4 tecken.'; return; }
-  if (!name) { err.textContent = 'Vänligen ange ett lagnamn.'; return; }
-
-  document.getElementById('btn-join-action').disabled = true;
-  err.textContent = 'Ansluter till värden...';
-
-  currentCode = code;
-  myRole = 'player';
-  myTeamId = localStorage.getItem('mg_team_' + code) || 'team-' + Math.random().toString(36).slice(2, 8);
-  localStorage.setItem('mg_team_' + code, myTeamId);
-
-  initPeerAsPlayer(code, name);
-}
-
-function nextSong() {
-  if (room.round < 5) {
-    room.round++;
-    broadcastState();
-    render();
-  }
-}
-
-function prevSong() {
-  if (room.round > 1) {
-    room.round--;
-    broadcastState();
-    render();
-  }
-}
-
-function revealAnswer() {
-  room.revealed = true;
-  broadcastState();
-  render();
-}
-
-function isCorrect(guess) {
-  return (guess || '').toLowerCase().trim() === (room.answer || '').toLowerCase().trim();
-}
-
-function markGuess(teamId, correct) {
-  const g = room.guesses[teamId];
-  if (!g || g.scored) return;
-  const pts = correct ? (6 - g.round) : 0;
-  room.teams[teamId].score = (room.teams[teamId].score || 0) + pts;
-  g.scored = true;
-  g.points = pts;
-  broadcastState();
-  render();
-}
-
-function finishRound() {
-  Object.entries(room.guesses).forEach(([id, g]) => {
-    if (g.scored) return;
-    const correct = isCorrect(g.guess);
-    const pts = correct ? (6 - g.round) : 0;
-    if (room.teams[id]) room.teams[id].score = (room.teams[id].score || 0) + pts;
-    g.scored = true;
-    g.points = pts;
+  db.ref('games/' + activeGameId).set(initialPayload).then(() => {
+    listenToRoom(activeGameId);
+    setupHostUI();
+    switchView('host');
   });
-
-  room.history.push({
-    answer: room.answer,
-    guesses: JSON.parse(JSON.stringify(room.guesses)),
-    teams: Object.fromEntries(Object.entries(room.teams).map(([id, t]) => [id, t.name]))
-  });
-
-  room.guesses = {};
-  room.round = 1;
-  room.revealed = false;
-  document.getElementById('setup-answer').value = '';
-  room.answer = '';
-
-  broadcastState();
-  render();
 }
 
-function submitGuess() {
-  const guess = document.getElementById('player-guess').value.trim();
-  if (!guess || !hostConn) return;
-  hostConn.send({ type: 'GUESS', teamId: myTeamId, guess });
-  document.getElementById('player-guess').value = '';
-}
+function setupHostUI() {
+  document.getElementById('host-game-id').textContent = activeGameId;
+  const joinUrl = window.location.origin + window.location.pathname + '?game=' + activeGameId;
+  document.getElementById('join-url').textContent = joinUrl;
 
-// ==================== RENDERING ====================
-function render() {
-  if (!room) return;
-  document.getElementById('nav-room').textContent = 'Rum ' + room.code;
-  document.getElementById('nav-room').classList.remove('hidden');
-  renderHost();
-  renderPlayer();
-  renderScores();
-}
-
-function renderHost() {
-  if (myRole !== 'host') return;
-  document.getElementById('room-code-display').textContent = room.code;
-  document.getElementById('join-url').textContent = joinUrlFor(room.code);
-  document.getElementById('current-round').textContent = room.round;
-  document.getElementById('current-points').textContent = (6 - room.round) + ' poäng';
-  document.getElementById('btn-prev').disabled = room.round <= 1;
-  document.getElementById('btn-next').disabled = room.round >= 5;
-  document.getElementById('revealed-answer').textContent = room.answer || '(Inget svar angivet)';
-  document.getElementById('answer-reveal').classList.toggle('hidden', !room.revealed);
-
-  const teams = Object.entries(room.teams);
-  document.getElementById('connected-teams').innerHTML = teams.length
-    ? teams.map(([id, t]) => '<li><span>' + esc(t.name) + '</span> <span>' + (room.guesses[id] ? '✅ gissat' : '⏳ lyssnar') + '</span></li>').join('')
-    : '<li style="color:#666">Inga lag anslutna än. Skanna QR-koden ovan!</li>';
-
-  const guesses = Object.entries(room.guesses);
-  document.getElementById('guesses-list').innerHTML = guesses.length
-    ? guesses.map(([id, g]) => {
-        const name = room.teams[id]?.name || 'Okänt lag';
-        const guessed = isCorrect(g.guess);
-        const pts = 6 - g.round;
-        if (g.scored) {
-          return '<div class="guess-item"><strong>' + esc(name) + '</strong>: "' + esc(g.guess) + '" ' +
-            '<span class="guess-round">(låt ' + g.round + ')</span> ' +
-            '<span style="color:' + (g.points > 0 ? '#2ed573' : '#ff6b81') + '">' +
-            (g.points > 0 ? '+' + g.points + ' p' : '0 p') + '</span></div>';
-        }
-        return '<div class="guess-item"><strong>' + esc(name) + '</strong>: "' + esc(g.guess) + '" ' +
-          '<span class="guess-round">(låt ' + g.round + ')</span>' +
-          '<button class="btn-tiny btn-correct" onclick="markGuess(\'' + id + '\', true)">✅ Rätt (' + pts + ' p)</button>' +
-          '<button class="btn-tiny btn-wrong" onclick="markGuess(\'' + id + '\', false)">❌ Fel</button>' +
-          (guessed ? ' <span class="guess-round">matchar svaret</span>' : '') +
-          '</div>';
-      }).join('')
-    : '<p style="color:#666">Inga gissningar inkomna för denna runda än.</p>';
-
-  document.getElementById('mini-scores').innerHTML = scoreRows(false);
-}
-
-function renderPlayer() {
-  if (myRole !== 'player') return;
-  const me = room.teams[myTeamId];
-  if (me) {
-    document.getElementById('my-team').textContent = me.name;
-    document.getElementById('my-score').textContent = (me.score || 0) + ' p';
-  }
-  document.getElementById('song-value').textContent = 6 - room.round;
-
-  for (let i = 1; i <= 5; i++) {
-    const dot = document.getElementById('dot-' + i);
-    dot.classList.remove('active', 'played');
-    if (i < room.round) dot.classList.add('played');
-    if (i === room.round) dot.classList.add('active');
-  }
-
-  const g = room.guesses[myTeamId];
-  const sec = document.getElementById('guess-section');
-  const st = document.getElementById('guess-status');
-  if (!g) {
-    sec.classList.remove('hidden');
-    st.classList.add('hidden');
-  } else {
-    sec.classList.add('hidden');
-    st.classList.remove('hidden');
-    document.getElementById('status-msg').textContent = g.scored
-      ? (g.points > 0 ? '✅ Rätt! +' + g.points + ' poäng' : '❌ Tyvärr fel svar (0 p)')
-      : 'Ni gissade på låt ' + g.round + ': "' + g.guess + '" (Väntar på rättning)';
-  }
-
-  document.getElementById('player-scores').innerHTML = scoreRows(false);
-}
-
-function renderScores() {
-  document.getElementById('full-scoreboard').innerHTML = scoreRows(true);
-  const h = document.getElementById('round-history');
-  h.innerHTML = room.history.length
-    ? '<h3 style="margin-top:24px;">Tidigare rundor</h3>' + room.history.map((r, i) => {
-        const winners = Object.entries(r.guesses).filter(([_, g]) => g.points > 0)
-          .map(([id, g]) => esc(r.teams[id] || '?') + ' (+' + g.points + ')').join(', ');
-        return '<div class="history-item">Runda ' + (i + 1) + ': svaret var "' + esc(r.answer) + '" — rätt: ' + (winners || 'ingen') + '</div>';
-      }).join('')
-    : '';
-}
-
-function scoreRows(big) {
-  const sorted = Object.entries(room.teams).sort((a, b) => (b[1].score || 0) - (a[1].score || 0));
-  if (!sorted.length) return '<p style="color:#666">Inga lag än</p>';
-  return sorted.map(([id, t], i) =>
-    '<div class="score-row' + (big ? ' big' : '') + (id === myTeamId ? ' me' : '') + '">' +
-    '<span class="rank">' + (i + 1) + '</span>' +
-    '<span class="team">' + esc(t.name) + '</span>' +
-    '<span class="score">' + (t.score || 0) + (big ? ' p' : '') + '</span></div>'
-  ).join('');
-}
-
-function renderQR() {
-  const box = document.getElementById('qr-code');
-  box.innerHTML = '';
-  new QRCode(box, {
-    text: joinUrlFor(room.code),
-    width: 190, height: 190,
-    colorDark: '#0f0f23', colorLight: '#ffffff',
+  const qrContainer = document.getElementById('qr-code');
+  qrContainer.innerHTML = '';
+  new QRCode(qrContainer, {
+    text: joinUrl,
+    width: 170,
+    height: 170,
+    colorDark: '#1a1a2e',
+    colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.M
   });
 }
 
-function esc(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-// ==================== NAVIGERING ====================
-function switchView(view) {
-  currentView = view;
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + view).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  document.getElementById('nav-bar').classList.toggle('hidden', view === 'landing' && !room);
-  document.getElementById('nav-host').classList.toggle('hidden', myRole !== 'host');
-  document.getElementById('nav-player').classList.toggle('hidden', myRole !== 'player');
-  if (room) render();
-}
-
-document.querySelectorAll('.nav-btn').forEach(b => {
-  b.addEventListener('click', () => switchView(b.dataset.view));
-});
-
-function goJoin() { switchView('join'); }
-
-// Initiera om man scannat länk med ?room=XXXX
-(function init() {
-  const params = new URLSearchParams(location.search);
-  const code = (params.get('room') || '').toUpperCase();
-  if (code) {
-    document.getElementById('join-code').value = code;
-    switchView('join');
+function toggleCameraScanner() {
+  const qrDiv = document.getElementById('qr-reader');
+  if (html5QrScanner) {
+    html5QrScanner.stop().then(() => {
+      html5QrScanner.clear();
+      html5QrScanner = null;
+      qrDiv.classList.add('hidden');
+    });
   } else {
-    switchView('landing');
+    qrDiv.classList.remove('hidden');
+    html5QrScanner = new Html5Qrcode("qr-reader");
+    html5QrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        handleScannedInput(decodedText);
+        toggleCameraScanner();
+      },
+      (error) => {}
+    );
   }
-})();
-</script>
+}
 
+function handleManualLoad() {
+  const input = document.getElementById('manual-scan-input').value.trim();
+  if (!input) return;
+  handleScannedInput(input);
+  document.getElementById('manual-scan-input').value = '';
+}
+
+async function handleScannedInput(rawInput) {
+  let cardNum = null;
+  let spotifyUrl = rawInput;
+
+  if (/^#?\d+$/.test(rawInput.trim())) {
+    cardNum = rawInput.replace(/[^0-9]/g, '');
+  } else if (rawInput.includes('open.spotify.com/playlist/')) {
+    try {
+      const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(rawInput)}`);
+      const data = await res.json();
+      const titleMatch = (data.title || '').match(/#?(\d+)/);
+      if (titleMatch) cardNum = titleMatch[1];
+    } catch (e) {
+      console.warn("Kunde inte hämta oEmbed:", e);
+    }
+  }
+
+  if (!cardNum) {
+    alert('Kunde inte läsa ut något kortnummer (#nummer) från spellistan.');
+    return;
+  }
+
+  const answer = localFacit[cardNum] || (gameState.facit && gameState.facit[cardNum]);
+  if (!answer) {
+    alert(`Hittade inget svar för Kort #${cardNum} i inställningarna!`);
+    return;
+  }
+
+  const duration = gameState.timerDuration || 30;
+  const endsAt = Date.now() + (duration * 1000);
+
+  db.ref(`games/${activeGameId}`).update({
+    currentCard: { number: cardNum, playlistUrl: spotifyUrl },
+    currentSongStep: 1,
+    revealed: false,
+    revealedAnswer: '',
+    timerEndsAt: endsAt,
+    timerActive: true,
+    guesses: {}
+  });
+
+  document.getElementById('card-scanner-section').classList.add('hidden');
+}
+
+function prepareNextCard() {
+  document.getElementById('card-scanner-section').classList.remove('hidden');
+  document.getElementById('answer-reveal').classList.add('hidden');
+}
+
+function loadSpotifyPlayer(url) {
+  if (!url || !url.includes('open.spotify.com')) return;
+  let embedUrl = url.replace('open.spotify.com/', 'open.spotify.com/embed/');
+  document.getElementById('spotify-embed-container').innerHTML =
+    `<iframe src="${embedUrl}?utm_source=generator&theme=0" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
+}
+
+function nextSongStep() {
+  if (gameState.currentSongStep < 5) {
+    const nextStep = gameState.currentSongStep + 1;
+    const duration = gameState.timerDuration || 30;
+    const endsAt = Date.now() + (duration * 1000);
+
+    db.ref(`games/${activeGameId}`).update({
+      currentSongStep: nextStep,
+      timerEndsAt: endsAt,
+      timerActive: true
+    });
+  }
+}
+
+function restartTimer() {
+  if (!activeGameId || !gameState.currentCard?.number) return;
+  const duration = gameState.timerDuration || 30;
+  db.ref(`games/${activeGameId}`).update({
+    timerEndsAt: Date.now() + (duration * 1000),
+    timerActive: true
+  });
+}
+
+function addTimerSeconds(sec) {
+  if (!activeGameId || !gameState.currentCard?.number) return;
+  const currentEnd = Math.max(Date.now(), gameState.timerEndsAt || Date.now());
+  db.ref(`games/${activeGameId}`).update({
+    timerEndsAt: currentEnd + (sec * 1000),
+    timerActive: true
+  });
+}
+
+// Avslöja svar med fuzzy matching
+function revealAnswer() {
+  const cardNum = gameState.currentCard?.number;
+  const correctAns = (localFacit[cardNum] || (gameState.facit && gameState.facit[cardNum]) || '').trim();
+  const currentGuesses = gameState.guesses || {};
+  const currentScores = { ...gameState.scores };
+
+  Object.keys(currentGuesses).forEach(team => {
+    const g = currentGuesses[team];
+    
+    // Använd Levenshtein fuzzy match
+    const isMatch = isFuzzyMatch(g.guess, correctAns);
+    const pts = isMatch ? (6 - g.step) : 0;
+    
+    currentGuesses[team].scored = true;
+    currentGuesses[team].isCorrect = isMatch;
+    currentGuesses[team].points = pts;
+
+    if (isMatch) currentScores[team] = (currentScores[team] || 0) + pts;
+  });
+
+  db.ref(`games/${activeGameId}`).update({
+    revealed: true,
+    revealedAnswer: correctAns,
+    timerActive: false,
+    guesses: currentGuesses,
+    scores: currentScores
+  });
+}
+
+function overrideScore(team, makeCorrect) {
+  const g = gameState.guesses[team];
+  if (!g) return;
+  const pts = 6 - g.step;
+  const currentScore = gameState.scores[team] || 0;
+  
+  let newScore = currentScore;
+  if (makeCorrect && !g.isCorrect) newScore += pts;
+  if (!makeCorrect && g.isCorrect) newScore = Math.max(0, newScore - pts);
+
+  db.ref().update({
+    [`games/${activeGameId}/scores/${team}`]: newScore,
+    [`games/${activeGameId}/guesses/${team}/isCorrect`]: makeCorrect,
+    [`games/${activeGameId}/guesses/${team}/points`]: makeCorrect ? pts : 0
+  });
+}
+
+// ==================== TIMER LOOP ====================
+function startLocalTimerEngine() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const totalDuration = gameState.timerDuration || 30;
+    let secondsLeft = 0;
+
+    if (gameState.timerActive && gameState.timerEndsAt) {
+      secondsLeft = Math.max(0, Math.ceil((gameState.timerEndsAt - Date.now()) / 1000));
+    }
+
+    const percentage = Math.min(100, Math.max(0, (secondsLeft / totalDuration) * 100));
+
+    const hostDisplay = document.getElementById('host-timer-display');
+    const hostBar = document.getElementById('host-timer-bar');
+    if (hostDisplay && hostBar) {
+      hostDisplay.textContent = `⏱️ ${secondsLeft}s`;
+      hostBar.style.width = `${percentage}%`;
+      updateTimerBadgeStyles(hostDisplay, hostBar, secondsLeft);
+    }
+
+    const playerDisplay = document.getElementById('player-timer-display');
+    const playerBar = document.getElementById('player-timer-bar');
+    if (playerDisplay && playerBar) {
+      playerDisplay.textContent = `⏱️ ${secondsLeft}s`;
+      playerBar.style.width = `${percentage}%`;
+      updateTimerBadgeStyles(playerDisplay, playerBar, secondsLeft);
+    }
+
+    updatePlayerInputLock(secondsLeft);
+  }, 250);
+}
+
+function updateTimerBadgeStyles(badge, bar, seconds) {
+  badge.classList.remove('safe', 'warning');
+  if (seconds > 10) {
+    badge.classList.add('safe');
+    bar.style.backgroundColor = '#2ed573';
+  } else if (seconds > 4) {
+    badge.classList.add('warning');
+    bar.style.backgroundColor = '#ffa502';
+  } else {
+    bar.style.backgroundColor = '#ff4757';
+  }
+}
+
+function updatePlayerInputLock(secondsLeft) {
+  const myTeam = localStorage.getItem('my_music_team');
+  if (!myTeam || gameState.revealed) return;
+
+  const myGuess = (gameState.guesses || {})[myTeam];
+  const timeoutBanner = document.getElementById('player-timeout-msg');
+  const guessInput = document.getElementById('player-guess');
+  const guessBtn = document.getElementById('btn-player-submit');
+
+  if (myGuess) {
+    timeoutBanner.classList.add('hidden');
+    return;
+  }
+
+  if (secondsLeft <= 0 && gameState.timerActive) {
+    timeoutBanner.classList.remove('hidden');
+    document.getElementById('timeout-song-num').textContent = gameState.currentSongStep;
+    guessInput.disabled = true;
+    guessBtn.disabled = true;
+  } else {
+    timeoutBanner.classList.add('hidden');
+    guessInput.disabled = false;
+    guessBtn.disabled = false;
+  }
+}
+
+// ==================== REALTIME DATABASE LISTENER ====================
+function listenToRoom(roomId) {
+  db.ref('games/' + roomId).on('value', snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    const oldUrl = gameState.currentCard?.playlistUrl;
+    gameState = {
+      facit: data.facit || {},
+      currentCard: data.currentCard || { number: null, playlistUrl: '' },
+      currentSongStep: data.currentSongStep || 1,
+      revealed: data.revealed || false,
+      revealedAnswer: data.revealedAnswer || '',
+      timerDuration: data.timerDuration || 30,
+      timerEndsAt: data.timerEndsAt || 0,
+      timerActive: data.timerActive || false,
+      teams: data.teams || [],
+      scores: data.scores || {},
+      guesses: data.guesses || {}
+    };
+
+    if (isHost && gameState.currentCard.playlistUrl && oldUrl !== gameState.currentCard.playlistUrl) {
+      loadSpotifyPlayer(gameState.currentCard.playlistUrl);
+    }
+
+    updateHostUI();
+    updatePlayerUI();
+    updateScoreboards();
+  });
+}
+
+function updateHostUI() {
+  if (!isHost) return;
+
+  const card = gameState.currentCard;
+  const hasCard = !!card.number;
+
+  document.getElementById('current-card-badge').textContent = hasCard ? `#${card.number}` : 'Inget kort laddat';
+  
+  const step = gameState.currentSongStep;
+  document.getElementById('current-song-num').textContent = step;
+  document.getElementById('current-song-pts').textContent = (6 - step) + ' poäng värd';
+
+  const btnNext = document.getElementById('btn-next-song');
+  const btnReveal = document.getElementById('btn-reveal-action');
+
+  btnNext.disabled = !hasCard || gameState.revealed || step >= 5;
+  btnNext.innerHTML = step < 5 
+    ? `🎵 Spela Nästa Låt (Låt ${step + 1} &rarr; ${6 - (step + 1)}p)`
+    : `🏁 Sista låten spelas (1p)`;
+
+  btnReveal.disabled = !hasCard || gameState.revealed;
+
+  const teamsList = document.getElementById('connected-teams');
+  teamsList.innerHTML = (gameState.teams || []).map(t => {
+    const g = gameState.guesses[t];
+    return `<li style="padding:4px 0; border-bottom:1px solid #2a2a4a;">
+      ${t}: ${g ? `✅ Gissat (Låt ${g.step})` : '⏳ Lyssnar...'}
+    </li>`;
+  }).join('');
+
+  const revealBox = document.getElementById('answer-reveal');
+  if (gameState.revealed) {
+    revealBox.classList.remove('hidden');
+    document.getElementById('revealed-answer').textContent = gameState.revealedAnswer;
+    
+    document.getElementById('guesses-list').innerHTML = Object.entries(gameState.guesses || {}).map(([team, data]) => `
+      <div class="guess-item">
+        <div>
+          <strong>${team}</strong>: "${data.guess}" 
+          <span style="color:#888;">(Låt ${data.step})</span>
+          <span style="font-size:12px; margin-left:6px; color:${data.isCorrect ? '#2ed573' : '#ff4757'}">
+            [${data.isCorrect ? 'Matchad' : 'Ej matchad'}]
+          </span>
+        </div>
+        <div>
+          <button class="btn-tiny ${data.isCorrect ? 'btn-correct' : 'btn-secondary'}" onclick="overrideScore('${team}', true)">Rätt (+${6 - data.step}p)</button>
+          <button class="btn-tiny ${!data.isCorrect ? 'btn-wrong' : 'btn-secondary'}" onclick="overrideScore('${team}', false)">Fel (0p)</button>
+        </div>
+      </div>
+    `).join('') || '<p style="color:#888;">Inga gissningar inkomna.</p>';
+  } else {
+    revealBox.classList.add('hidden');
+  }
+}
+
+// ==================== SPELAR LOGIK ====================
+function initPlayerJoin(roomId) {
+  activeGameId = roomId.toUpperCase();
+  document.getElementById('player-room-code').value = activeGameId;
+  document.getElementById('room-input-group').classList.add('hidden');
+
+  if (initFirebase()) {
+    db.ref('games/' + activeGameId + '/teams').once('value', snap => {
+      const teams = snap.val() || [];
+      const select = document.getElementById('player-team-select');
+      select.innerHTML = '<option value="">-- Välj ditt lag --</option>' + 
+        teams.map(t => `<option value="${t}">${t}</option>`).join('');
+    });
+    listenToRoom(activeGameId);
+  }
+}
+
+function joinGame() {
+  const room = document.getElementById('player-room-code').value.trim().toUpperCase();
+  const team = document.getElementById('player-team-select').value;
+
+  if (!room || !team) {
+    alert('Välj rum och lag.');
+    return;
+  }
+
+  activeGameId = room;
+  localStorage.setItem('my_music_team', team);
+
+  document.getElementById('player-login').classList.add('hidden');
+  document.getElementById('player-game').classList.remove('hidden');
+  document.getElementById('my-team').textContent = team;
+
+  if (!db) initFirebase();
+  listenToRoom(activeGameId);
+}
+
+function submitGuess() {
+  const team = localStorage.getItem('my_music_team');
+  const guess = document.getElementById('player-guess').value.trim();
+  
+  const secondsLeft = Math.max(0, Math.ceil((gameState.timerEndsAt - Date.now()) / 1000));
+  if (gameState.timerActive && secondsLeft <= 0) {
+    alert('Tiden för denna låt har gått ut!');
+    return;
+  }
+
+  if (!guess || !team || !activeGameId) return;
+
+  const guessData = {
+    guess: guess,
+    step: gameState.currentSongStep,
+    scored: false,
+    points: 0,
+    isCorrect: false
+  };
+
+  db.ref(`games/${activeGameId}/guesses/${team}`).set(guessData).then(() => {
+    document.getElementById('player-guess').value = '';
+  });
+}
+
+function updatePlayerUI() {
+  const myTeam = localStorage.getItem('my_music_team');
+  if (!myTeam) return;
+
+  document.getElementById('my-score').textContent = (gameState.scores[myTeam] || 0) + ' pts';
+  document.getElementById('song-value').textContent = 6 - gameState.currentSongStep;
+  document.getElementById('player-card-num').textContent = gameState.currentCard?.number ? `#${gameState.currentCard.number}` : '#?';
+  document.getElementById('player-song-num').textContent = gameState.currentSongStep;
+
+  for (let i = 1; i <= 5; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.classList.remove('active', 'played');
+    if (i < gameState.currentSongStep) dot.classList.add('played');
+    if (i === gameState.currentSongStep) dot.classList.add('active');
+  }
+
+  const myGuess = (gameState.guesses || {})[myTeam];
+  const guessSection = document.getElementById('guess-section');
+  const guessStatus = document.getElementById('guess-status');
+  const revealCard = document.getElementById('player-reveal-card');
+
+  if (gameState.revealed) {
+    guessSection.classList.add('hidden');
+    guessStatus.classList.add('hidden');
+    revealCard.classList.remove('hidden');
+
+    document.getElementById('player-revealed-answer').textContent = gameState.revealedAnswer || '---';
+
+    const outcomeBox = document.getElementById('player-team-outcome');
+    if (myGuess && myGuess.isCorrect) {
+      outcomeBox.innerHTML = `<div class="result-badge correct">🎉 RÄTT! (+${myGuess.points} poäng)</div>`;
+    } else if (myGuess && !myGuess.isCorrect) {
+      outcomeBox.innerHTML = `<div class="result-badge wrong">❌ FEL! Ni gissade: "${myGuess.guess}" (0p)</div>`;
+    } else {
+      outcomeBox.innerHTML = `<div class="result-badge wrong">⏳ Ni skickade ingen gissning (0p)</div>`;
+    }
+  } else {
+    revealCard.classList.add('hidden');
+    if (myGuess) {
+      guessSection.classList.add('hidden');
+      guessStatus.classList.remove('hidden');
+      document.getElementById('locked-guess-text').textContent = `"${myGuess.guess}" (Låt ${myGuess.step})`;
+    } else {
+      guessSection.classList.remove('hidden');
+      guessStatus.classList.add('hidden');
+    }
+  }
+}
+
+// ==================== POÄNGTAVLA ====================
+function updateScoreboards() {
+  const sorted = Object.entries(gameState.scores || {}).sort((a, b) => b[1] - a[1]);
+
+  const rows = sorted.map(([team, score], i) => `
+    <div class="score-row">
+      <span class="rank">${i + 1}</span>
+      <span class="team">${team}</span>
+      <span class="score">${score} pts</span>
+    </div>
+  `).join('') || '<p style="color:#888;">Inga poäng än.</p>';
+
+  const mini = document.getElementById('mini-scores');
+  const full = document.getElementById('full-scoreboard');
+  if (mini) mini.innerHTML = rows;
+  if (full) full.innerHTML = rows;
+}
+
+// ==================== BOOTSTRAP ====================
+window.addEventListener('DOMContentLoaded', () => {
+  loadSavedFirebaseConfig();
+  startLocalTimerEngine();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomParam = urlParams.get('game');
+  if (roomParam) {
+    switchView('player');
+    initPlayerJoin(roomParam);
+  }
+});
+</script>
 </body>
 </html>

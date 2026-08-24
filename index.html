@@ -109,36 +109,40 @@
   .points-badge { background: #2ed573; color: #0f2f1a; }
 
   /* Blindad Spotify-spelare */
-  .blind-spotify-wrapper {
-    position: relative;
-    background: #121212;
-    border-radius: 12px;
-    overflow: hidden;
-    margin: 16px 0;
-    border: 2px solid #2a2a4a;
-    min-height: 152px;
-  }
-  .blind-spotify-wrapper iframe { width: 100%; height: 152px; border: none; display: block; }
-  .blind-spotify-mask {
-    position: absolute;
-    top: 0;
-    left: 155px;
-    right: 0;
-    bottom: 0;
-    background: #181828;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #ffd700;
-    font-weight: 700;
-    font-size: 14px;
-    border-left: 2px solid #2a2a4a;
-    pointer-events: none;
-    letter-spacing: 1px;
-    padding: 10px;
-    text-align: center;
-  }
+/* ERSÄTT I <style> */
+.blind-spotify-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 16px 0;
+  border: 2px solid #2a2a4a;
+  background: #121212;
+  height: 152px;
+}
+.blind-spotify-wrapper iframe { 
+  width: 100%; 
+  height: 152px; 
+  border: none; 
+}
+/* Maskerar endast titeln och artisten men låter Play & Nästa-knapp vara klickbara */
+.blind-spotify-mask {
+  position: absolute;
+  top: 15px;
+  left: 145px;
+  right: 15px;
+  height: 65px;
+  background: #181828;
+  border-radius: 8px;
+  border: 1px dashed #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffd700;
+  font-weight: 700;
+  font-size: 13px;
+  pointer-events: none; /* Gör att klick går igenom till spelaren */
+  z-index: 10;
+}
 
   .answer-box { margin-top: 20px; padding: 20px; background: #252540; border-radius: 12px; border: 2px solid #ffd700; }
   .answer-text { font-size: 28px; font-weight: 800; color: #ffd700; margin: 12px 0; text-align: center; }
@@ -617,9 +621,10 @@ async function handleScan(text) {
 }
 
 // ==================== KORTHANTERING ====================
+// ERSÄTT processScannedCard() I <script>
 async function processScannedCard(rawInput) {
   let rawNum = null;
-  const parsed = parseSpotifyUrl(rawInput);
+  let parsed = parseSpotifyUrl(rawInput);
 
   if (/^#?\d+$/.test(rawInput.trim())) {
     rawNum = rawInput.replace(/[^0-9]/g, '');
@@ -635,7 +640,7 @@ async function processScannedCard(rawInput) {
         if (anyNumMatch) rawNum = anyNumMatch[0];
       }
     } catch (e) {
-      console.warn("Kunde inte hämta oEmbed från Spotify:", e);
+      console.warn("Kunde inte hämta oEmbed:", e);
     }
   }
 
@@ -648,7 +653,7 @@ async function processScannedCard(rawInput) {
   const entry = HIDDEN_ANSWER_DATABASE[cardNum] || HIDDEN_ANSWER_DATABASE[rawNum];
 
   if (!entry) {
-    alert(`Kort #${cardNum} hittades inte i den gömda svarsdatabasen!\nKontrollera HIDDEN_ANSWER_DATABASE i koden.`);
+    alert(`Kort #${cardNum} hittades inte i den gömda svarsdatabasen!`);
     return;
   }
 
@@ -659,9 +664,13 @@ async function processScannedCard(rawInput) {
   room.round = 1;
   room.revealed = false;
   room.guesses = {};
-  room.baseEmbedUrl = parsed ? parsed.embedUrl : (entry.playlist ? parseSpotifyUrl(entry.playlist)?.embedUrl : '');
 
-  updateSpotifyPlayerForCurrentRound();
+  // Ladda spellistans iframe direkt
+  const box = document.getElementById('spotify-embed-container');
+  if (parsed && parsed.embedUrl && box) {
+    box.innerHTML = `<iframe src="${parsed.embedUrl}" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
+  }
+
   broadcastState();
   render();
 }
@@ -723,7 +732,6 @@ function joinRoom() {
 function nextSong() {
   if (room.round < 5) {
     room.round++;
-    updateSpotifyPlayerForCurrentRound();
     broadcastState();
     render();
   }

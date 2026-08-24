@@ -456,6 +456,7 @@ let spotifyIframeAPI = null;
 let spotifyController = null;
 let lastTrackDuration = 0;
 let initialTrackRegistered = false;
+let lastTrackChangeTime = 0;
 
 window.onSpotifyIframeApiReady = (IFrameAPI) => {
   spotifyIframeAPI = IFrameAPI;
@@ -567,6 +568,7 @@ function mountSpotifyWithAutoDetect(uri) {
 
   lastTrackDuration = 0;
   initialTrackRegistered = false;
+  lastTrackChangeTime = Date.now();
   box.innerHTML = '<div id="spotify-player-mount"></div>';
 
   if (spotifyIframeAPI) {
@@ -576,21 +578,32 @@ function mountSpotifyWithAutoDetect(uri) {
       (ctrl) => {
         spotifyController = ctrl;
 
-        // Lyssnare för automatiskt låtbyte
         ctrl.addListener('playback_update', e => {
-          const rawDuration = Math.round(e.data.duration || 0);
+          let rawDuration = Math.round(e.data.duration || 0);
+          if (rawDuration > 1000) rawDuration = Math.round(rawDuration / 1000);
 
-          if (rawDuration > 0) {
-            // Första låten registreras som basvärde utan att räkna upp
-            if (!initialTrackRegistered) {
+          const isPlaying = !e.data.isPaused && !e.data.isBuffering;
+
+          // Ignorera 0:00 och laddningstider
+          if (rawDuration <= 5) return;
+
+          // 1. Första gången en låt faktiskt spelas -> spara baslängden för Låt 1
+          if (!initialTrackRegistered) {
+            if (isPlaying) {
               lastTrackDuration = rawDuration;
               initialTrackRegistered = true;
-              return;
+              lastTrackChangeTime = Date.now();
             }
+            return;
+          }
 
-            // När låtlängden ändras (ny låt startar i Spotify) -> steg ner poängen
-            if (Math.abs(rawDuration - lastTrackDuration) > 3) {
+          // 2. När låtlängden ändras (ny låt startar i Spotify) -> sänk poäng
+          const now = Date.now();
+          if (isPlaying && (now - lastTrackChangeTime > 4000)) {
+            if (Math.abs(rawDuration - lastTrackDuration) > 4) {
               lastTrackDuration = rawDuration;
+              lastTrackChangeTime = now;
+              
               if (room && !room.revealed && room.round < 5) {
                 room.round++;
                 broadcastState();
@@ -779,8 +792,10 @@ function joinRoom() {
 }
 
 function nextSong() {
-  if (room.round < 5) {
+  if (room && !room.revealed && room.round < 5) {
     room.round++;
+    lastTrackChangeTime = Date.now();
+    lastTrackDuration = 0;
     broadcastState();
     render();
   }
@@ -831,6 +846,7 @@ function finishRound() {
   room.answer = '';
   lastTrackDuration = 0;
   initialTrackRegistered = false;
+  lastTrackChangeTime = 0;
 
   const box = document.getElementById('spotify-embed-container');
   if (box) box.innerHTML = '<p style="color:#888; text-align:center; line-height:152px;">Tryck på "SKANNA KORT" ovan för att starta musiken</p>';

@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
@@ -621,6 +622,51 @@ async function handleScan(text) {
 }
 
 // ==================== KORTHANTERING ====================
+
+let spotifyIframeAPI = null;
+let spotifyController = null;
+let lastTrackDuration = 0;
+
+window.onSpotifyIframeApiReady = (IFrameAPI) => {
+  spotifyIframeAPI = IFrameAPI;
+};
+
+function mountSpotifyWithAutoDetect(uri) {
+  const box = document.getElementById('spotify-embed-container');
+  if (!box || !uri) return;
+
+  lastTrackDuration = 0;
+  box.innerHTML = '<div id="spotify-player-mount"></div>';
+
+  if (spotifyIframeAPI) {
+    spotifyIframeAPI.createController(
+      document.getElementById('spotify-player-mount'),
+      { uri: uri, width: '100%', height: 152 },
+      (ctrl) => {
+        spotifyController = ctrl;
+
+        // LYSSNA PÅ AUTOMATISKT LÅTBYTE
+        ctrl.addListener('playback_update', e => {
+          const { duration, isPaused } = e.data;
+          
+          // Om duration ändras betyder det att en ny låt i spellistan har startat
+          if (duration > 0 && lastTrackDuration > 0 && duration !== lastTrackDuration) {
+            if (room && !room.revealed && room.round < 5) {
+              room.round++;
+              broadcastState();
+              render();
+            }
+          }
+          if (duration > 0) {
+            lastTrackDuration = duration;
+          }
+        });
+      }
+    );
+  }
+}
+
+
 // ERSÄTT processScannedCard() I <script>
 async function processScannedCard(rawInput) {
   let rawNum = null;
@@ -657,18 +703,15 @@ async function processScannedCard(rawInput) {
     return;
   }
 
-  const answer = typeof entry === 'string' ? entry : entry.answer;
-
   room.cardNum = cardNum;
-  room.answer = answer;
+  room.answer = typeof entry === 'string' ? entry : entry.answer;
   room.round = 1;
   room.revealed = false;
   room.guesses = {};
 
-  // Ladda spellistans iframe direkt
-  const box = document.getElementById('spotify-embed-container');
-  if (parsed && parsed.embedUrl && box) {
-    box.innerHTML = `<iframe src="${parsed.embedUrl}" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
+  // Ladda spellistan med lyssnare
+  if (parsed && parsed.type && parsed.id) {
+    mountSpotifyWithAutoDetect(`spotify:${parsed.type}:${parsed.id}`);
   }
 
   broadcastState();
@@ -766,6 +809,7 @@ function finishRound() {
     if (room.teams[id]) room.teams[id].score = (room.teams[id].score || 0) + pts;
     g.scored = true;
     g.points = pts;
+    lastTrackDuration = 0;
   });
 
   room.history.push({
